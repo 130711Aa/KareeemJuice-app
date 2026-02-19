@@ -41,7 +41,11 @@ export default function AuthPage() {
                 navigate('/')
             } else {
                 toast.success(mode === 'login' ? 'Berhasil masuk!' : 'Registrasi berhasil! Silakan cek email untuk verifikasi.')
-                if (mode === 'login') navigate('/')
+                if (mode === 'login' && email === 'admin@kareeemjuice.com') {
+                    navigate('/admin')
+                } else if (mode === 'login') {
+                    navigate('/')
+                }
             }
         } else {
             toast.error(result.error || 'Terjadi kesalahan')

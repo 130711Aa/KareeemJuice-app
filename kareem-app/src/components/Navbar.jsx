@@ -73,7 +73,7 @@ function AdminNavbar() {
 
     const handleLogout = () => {
         logout()
-        navigate('/admin/login')
+        navigate('/auth')
     }
 
     const navLinks = [
@@ -207,7 +207,7 @@ function AdminNavbar() {
 
 export default function Navbar() {
     const location = useLocation()
-    const isAdmin = location.pathname.startsWith('/admin') && location.pathname !== '/admin/login'
+    const isAdmin = location.pathname.startsWith('/admin') && location.pathname !== '/auth'
 
     return isAdmin ? <AdminNavbar /> : <CustomerNavbar />
 }

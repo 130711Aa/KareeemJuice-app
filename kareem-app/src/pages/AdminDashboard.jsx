@@ -73,7 +73,6 @@ export default function AdminDashboard() {
 
         return {
             totalRevenue, totalOrders, pending, processing, completed,
-            totalRevenue, totalOrders, pending, processing, completed,
             topProduct: topProduct ? topProduct.name : '-',
             topProductCount: topProduct ? topProduct.count : 0,
             allProductsRanked,

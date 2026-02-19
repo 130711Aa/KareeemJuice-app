@@ -13,7 +13,7 @@ import CustomerOrdersPage from './pages/CustomerOrdersPage'
 import MenuPage from './pages/MenuPage'
 import AdminDashboard from './pages/AdminDashboard'
 import MenuManagement from './pages/MenuManagement'
-import AdminLogin from './pages/AdminLogin'
+
 import OrdersPage from './pages/OrdersPage'
 import CategoriesPage from './pages/CategoriesPage'
 import HistoryPage from './pages/HistoryPage'
@@ -23,7 +23,7 @@ import InventoryPage from './pages/InventoryPage'
 function AppContent() {
     const location = useLocation()
     const isAdmin = location.pathname.startsWith('/admin')
-    const isLoginPage = location.pathname === '/admin/login' || location.pathname === '/auth'
+    const isLoginPage = location.pathname === '/auth'
 
     return (
         <div className="relative flex flex-col min-h-screen bg-[#fcfaf8]">
@@ -36,8 +36,7 @@ function AppContent() {
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/orders" element={<CustomerOrdersPage />} />
 
-                    {/* Admin Login (public) */}
-                    <Route path="/admin/login" element={<AdminLogin />} />
+                    {/* Admin Login (public) - now consolidated to /auth */}
                     <Route path="/admin/analytics" element={<AnalyticsPage />} />
 
                     {/* Admin (protected) */}
