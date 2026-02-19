@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useOrders } from '../context/OrdersContext'
 
 function CustomerNavbar() {
+    const { user, logout } = useAuth()
     const { totalItems, setIsOpen } = useCart()
 
     return (
@@ -20,6 +21,31 @@ function CustomerNavbar() {
             </Link>
 
             <div className="flex items-center gap-3">
+                {user ? (
+                    <div className="flex items-center gap-3">
+                        <span className="hidden md:inline text-sm font-medium text-neutral-600">
+                            Hi, {user.user_metadata?.name?.split(' ')[0] || 'Kak'}
+                        </span>
+                        <Link to="/orders" className="bg-[#ff8c00]/10 hover:bg-[#ff8c00]/20 text-[#ff8c00] p-2 rounded-xl transition-colors" title="Pesanan Saya">
+                            <span className="material-symbols-outlined text-xl">receipt_long</span>
+                        </Link>
+                        <button
+                            onClick={logout}
+                            className="bg-red-50 hover:bg-red-100 text-red-500 p-2 rounded-xl transition-colors"
+                            title="Keluar"
+                        >
+                            <span className="material-symbols-outlined text-xl">logout</span>
+                        </button>
+                    </div>
+                ) : (
+                    <Link
+                        to="/auth"
+                        className="text-sm font-bold text-[#ff8c00] hover:bg-[#ff8c00]/5 px-4 py-2 rounded-xl transition-colors"
+                    >
+                        Masuk
+                    </Link>
+                )}
+
                 <button
                     onClick={() => setIsOpen(true)}
                     className="relative flex items-center gap-2 bg-[#ff8c00] hover:bg-[#e67e00] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-[#ff8c00]/20 active:scale-95"

@@ -1,16 +1,23 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from './AuthContext'
 
 const OrdersContext = createContext()
 
 export function OrdersProvider({ children }) {
+    const { user } = useAuth()
     const [orders, setOrders] = useState([])
     const [loading, setLoading] = useState(true)
 
     // Fetch orders from Supabase on mount
     useEffect(() => {
+        if (!user) {
+            setOrders([])
+            setLoading(false)
+            return
+        }
         fetchOrders()
-    }, [])
+    }, [user]) // Re-fetch when user changes
 
     // Persistence Effect
     useEffect(() => {
@@ -82,6 +89,7 @@ export function OrdersProvider({ children }) {
             payment_proof_path: order.payment_proof_path || null,
             items: order.items,
             status: 'pending',
+            user_id: user?.id || null, // Link to authenticated user if exists
         }
 
         try {
@@ -124,7 +132,7 @@ export function OrdersProvider({ children }) {
             setOrders(prev => [fallbackOrder, ...prev])
             return fallbackOrder
         }
-    }, [])
+    }, [user])
 
     const updateOrderStatus = useCallback(async (orderId, newStatus) => {
         setOrders(prev => prev.map(order =>

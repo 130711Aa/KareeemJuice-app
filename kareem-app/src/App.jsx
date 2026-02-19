@@ -8,6 +8,8 @@ import { ProductsProvider } from './context/ProductsContext'
 import Navbar from './components/Navbar'
 import CartDrawer from './components/CartDrawer'
 import ProtectedRoute from './components/ProtectedRoute'
+import AuthPage from './pages/AuthPage'
+import CustomerOrdersPage from './pages/CustomerOrdersPage'
 import MenuPage from './pages/MenuPage'
 import AdminDashboard from './pages/AdminDashboard'
 import MenuManagement from './pages/MenuManagement'
@@ -21,7 +23,7 @@ import InventoryPage from './pages/InventoryPage'
 function AppContent() {
     const location = useLocation()
     const isAdmin = location.pathname.startsWith('/admin')
-    const isLoginPage = location.pathname === '/admin/login'
+    const isLoginPage = location.pathname === '/admin/login' || location.pathname === '/auth'
 
     return (
         <div className="relative flex flex-col min-h-screen bg-[#fcfaf8]">
@@ -31,14 +33,12 @@ function AppContent() {
                 <Routes>
                     {/* Customer */}
                     <Route path="/" element={<MenuPage />} />
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route path="/orders" element={<CustomerOrdersPage />} />
 
                     {/* Admin Login (public) */}
                     <Route path="/admin/login" element={<AdminLogin />} />
-                    <Route path="/admin/analytics" element={
-                        <OrdersProvider>
-                            <AnalyticsPage />
-                        </OrdersProvider>
-                    } />
+                    <Route path="/admin/analytics" element={<AnalyticsPage />} />
 
                     {/* Admin (protected) */}
                     <Route path="/admin" element={

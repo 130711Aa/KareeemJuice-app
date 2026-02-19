@@ -1,40 +1,112 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext()
 
-// Simple credential-based auth for the store owner
-const ADMIN_EMAIL = 'admin@kareeemjuice.com'
-const ADMIN_PASSWORD = 'kareeem2024'
-
 export function AuthProvider({ children }) {
-    const [isAuthenticated, setIsAuthenticated] = useState(() => {
-        return localStorage.getItem('kareeem_admin_auth') === 'true'
-    })
-    const [loading, setLoading] = useState(false)
+    const [user, setUser] = useState(null)
+    const [session, setSession] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [isAdmin, setIsAdmin] = useState(false)
+
+    useEffect(() => {
+        // Check active session
+        const initSession = async () => {
+            try {
+                const { data, error } = await supabase.auth.getSession()
+                if (error) throw error
+
+                const session = data?.session ?? null
+                setSession(session)
+                setUser(session?.user ?? null)
+                checkAdmin(session?.user)
+            } catch (err) {
+                console.error('Auth initialization error:', err)
+                // Start with no user if error
+                setSession(null)
+                setUser(null)
+            } finally {
+                setLoading(false)
+            }
+        }
+        initSession()
+
+        // Listen for changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session)
+            setUser(session?.user ?? null)
+            checkAdmin(session?.user)
+            setLoading(false)
+        })
+
+        return () => subscription.unsubscribe()
+    }, [])
+
+    const checkAdmin = (user) => {
+        // For now, simpler check. You can replace this with a proper role check in DB
+        // or just rely on RLS. Ideally, we use Supabase Custom Claims or a 'role' column.
+        // Preserving the previous hardcoded logic is tricky without the password.
+        // Moving forward: Authenticated users are just users.
+        // 'Admin' status might be needed for UI logic (showing admin dashboard link).
+        // Let's assume a specific email is admin for UI purposes, or ANY logged in user for now.
+        // IMPROVEMENT: You should ideally have a 'roles' table or column.
+        if (user?.email === 'admin@kareeemjuice.com') {
+            setIsAdmin(true)
+        } else {
+            setIsAdmin(false)
+        }
+    }
 
     const login = async (email, password) => {
         setLoading(true)
-        // Simulate a small delay for UX
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-            setIsAuthenticated(true)
-            localStorage.setItem('kareeem_admin_auth', 'true')
-            setLoading(false)
-            return { success: true }
-        }
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        })
         setLoading(false)
-        return { success: false, error: 'Email atau password salah!' }
+        if (error) return { success: false, error: error.message }
+        return { success: true, data }
     }
 
-    const logout = () => {
-        setIsAuthenticated(false)
-        localStorage.removeItem('kareeem_admin_auth')
+    const signup = async (email, password, metaData) => {
+        setLoading(true)
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: metaData // { name: '...', phone: '...' }
+            }
+        })
+        setLoading(false)
+        if (error) return { success: false, error: error.message }
+        return { success: true, data }
+    }
+
+    const logout = async () => {
+        setLoading(true)
+        const { error } = await supabase.auth.signOut()
+        if (error) console.error('Error signing out:', error)
+        setUser(null)
+        setSession(null)
+        setIsAdmin(false)
+        setLoading(false)
+    }
+
+    const value = {
+        user,
+        session,
+        loading,
+        isAdmin, // Use the state variable which is set by checkAdmin
+        // Compatibility with existing code asking for 'isAuthenticated'
+        isAuthenticated: !!user,
+        login,
+        signup,
+        logout
     }
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, login, logout, loading }}>
-            {children}
+        <AuthContext.Provider value={value}>
+            {!loading && children}
         </AuthContext.Provider>
     )
 }

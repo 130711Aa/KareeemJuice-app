@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useCart } from '../context/CartContext'
 import { useOrders } from '../context/OrdersContext'
+import { useAuth } from '../context/AuthContext'
 import { formatRupiah } from '../lib/utils'
 import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
@@ -13,7 +14,13 @@ const QRIS_IMAGE = qrisImage
 export default function CheckoutModal({ onClose, onSuccess }) {
     const { items, totalPrice, clearCart } = useCart()
     const { addOrder } = useOrders()
-    const [form, setForm] = useState({ name: '', phone: '', address: '', notes: '' })
+    const { user } = useAuth()
+    const [form, setForm] = useState({
+        name: user?.user_metadata?.name || '',
+        phone: user?.user_metadata?.phone || '',
+        address: '',
+        notes: ''
+    })
     const [paymentMethod, setPaymentMethod] = useState('cash')
     const [paymentProof, setPaymentProof] = useState(null)
     const [proofPreview, setProofPreview] = useState(null)

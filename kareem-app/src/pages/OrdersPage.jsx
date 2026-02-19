@@ -42,7 +42,7 @@ export default function OrdersPage() {
     const [expandedOrder, setExpandedOrder] = useState(null)
     const [proofModal, setProofModal] = useState(null) // URL of proof to preview
 
-    const filteredOrders = useMemo(() => {
+    const todaysOrders = useMemo(() => {
         // 1. Get Current Time (WIB/Local)
         // Force 'Asia/Jakarta' timezone so we follow store hours everywhere
         const now = new Date()
@@ -60,11 +60,22 @@ export default function OrdersPage() {
         // effectively "Today's Session"
         const todayStr = jakartaTime.toDateString()
 
-        let filtered = orders.filter(o => {
+        return orders.filter(o => {
             const orderDate = new Date(o.created_at)
             const orderJakartaDate = new Date(orderDate.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }))
             return orderJakartaDate.toDateString() === todayStr
         })
+    }, [orders])
+
+    const counts = useMemo(() => ({
+        all: todaysOrders.length,
+        pending: todaysOrders.filter(o => o.status === 'pending').length,
+        processing: todaysOrders.filter(o => o.status === 'processing').length,
+        completed: todaysOrders.filter(o => o.status === 'completed').length,
+    }), [todaysOrders])
+
+    const filteredOrders = useMemo(() => {
+        let filtered = [...todaysOrders]
 
         // 4. Existing Status Filter
         if (activeFilter !== 'all') {
@@ -79,14 +90,7 @@ export default function OrdersPage() {
             return new Date(a.created_at) - new Date(b.created_at) // Oldest first (FIFO)
         })
         return filtered
-    }, [orders, activeFilter])
-
-    const counts = useMemo(() => ({
-        all: orders.length,
-        pending: orders.filter(o => o.status === 'pending').length,
-        processing: orders.filter(o => o.status === 'processing').length,
-        completed: orders.filter(o => o.status === 'completed').length,
-    }), [orders])
+    }, [todaysOrders, activeFilter])
 
     const formatDate = (iso) => {
         const d = new Date(iso)

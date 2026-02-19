@@ -21,6 +21,13 @@ export default function AdminLogin() {
 
         const result = await login(email, password)
         if (result.success) {
+            // Check if user is actually admin
+            if (result.data.user.email !== 'admin@kareeemjuice.com') {
+                setError('Akun ini tidak memiliki akses Admin!')
+                // Force logout so they don't stay signed in as customer here
+                await import('../lib/supabase').then(m => m.supabase.auth.signOut())
+                return
+            }
             navigate('/admin')
         } else {
             setError(result.error)
