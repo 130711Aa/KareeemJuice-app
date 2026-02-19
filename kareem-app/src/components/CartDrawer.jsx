@@ -1,3 +1,6 @@
+import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import { useCart } from '../context/CartContext'
 import { formatRupiah } from '../lib/utils'
 import { useState } from 'react'
@@ -5,7 +8,19 @@ import CheckoutModal from './CheckoutModal'
 
 export default function CartDrawer() {
     const { items, isOpen, setIsOpen, updateQuantity, removeItem, totalPrice, clearCart } = useCart()
+    const { user } = useAuth()
+    const navigate = useNavigate()
     const [showCheckout, setShowCheckout] = useState(false)
+
+    const handleCheckout = () => {
+        if (!user) {
+            toast.error('Silakan login terlebih dahulu untuk memesan!')
+            setIsOpen(false)
+            navigate('/auth')
+            return
+        }
+        setShowCheckout(true)
+    }
 
     if (!isOpen) return null
 
@@ -93,7 +108,7 @@ export default function CartDrawer() {
                             <span className="text-2xl font-extrabold text-[#ff8c00]">{formatRupiah(totalPrice)}</span>
                         </div>
                         <button
-                            onClick={() => setShowCheckout(true)}
+                            onClick={handleCheckout}
                             className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 flex items-center justify-center gap-2 active:scale-[0.98]"
                         >
                             <span className="material-symbols-outlined">shopping_bag</span>
