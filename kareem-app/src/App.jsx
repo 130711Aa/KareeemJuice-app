@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { CartProvider } from './context/CartContext'
 import { AuthProvider } from './context/AuthContext'
@@ -58,6 +58,11 @@ function AppContent() {
                     <Route path="/admin/inventory" element={
                         <ProtectedRoute><InventoryPage /></ProtectedRoute>
                     } />
+                    {/* Redirect legacy admin login */}
+                    <Route path="/admin/login" element={<Navigate to="/auth" replace />} />
+
+                    {/* Catch all */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </div>
             {/* Cart drawer only for customer pages */}

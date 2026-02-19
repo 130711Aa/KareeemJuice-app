@@ -38,7 +38,11 @@ export default function AuthPage() {
             // Check if we have a session (Auto Confirm enabled)
             if (result.data?.session) {
                 toast.success('Berhasil masuk!')
-                navigate('/')
+                if (email === 'admin@kareeemjuice.com') {
+                    navigate('/admin')
+                } else {
+                    navigate('/')
+                }
             } else {
                 toast.success(mode === 'login' ? 'Berhasil masuk!' : 'Registrasi berhasil! Silakan cek email untuk verifikasi.')
                 if (mode === 'login' && email === 'admin@kareeemjuice.com') {
