@@ -1,9 +1,25 @@
+import { useState } from 'react'
 import { useOrders } from '../context/OrdersContext'
+import { useAuth } from '../context/AuthContext'
 import { formatRupiah } from '../lib/utils'
 import { Link } from 'react-router-dom'
+import PrintNota from '../components/PrintNota'
+import toast from 'react-hot-toast'
 
 export default function CustomerOrdersPage() {
-    const { orders, loading } = useOrders()
+    const { orders, loading, deleteOrder } = useOrders()
+    const { user } = useAuth()
+    const [printOrder, setPrintOrder] = useState(null)
+
+    const handleDelete = async (order) => {
+        if (!window.confirm(`Batalkan pesanan #${order.order_number || order.id}?\n\nPesanan yang dibatalkan tidak bisa dikembalikan.`)) return
+        try {
+            await deleteOrder(order.id)
+            toast.success('Pesanan berhasil dibatalkan')
+        } catch (err) {
+            toast.error('Gagal membatalkan pesanan')
+        }
+    }
 
     if (loading) {
         return (
@@ -49,8 +65,8 @@ export default function CustomerOrdersPage() {
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${order.status === 'completed' ? 'bg-green-50 text-green-600 border-green-200' :
-                                            order.status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-200' :
-                                                'bg-blue-50 text-blue-600 border-blue-200'
+                                        order.status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-200' :
+                                            'bg-blue-50 text-blue-600 border-blue-200'
                                         }`}>
                                         {order.status === 'pending' ? 'Menunggu' :
                                             order.status === 'processing' ? 'Diproses' :
@@ -68,27 +84,23 @@ export default function CustomerOrdersPage() {
                         </div>
 
                         <div className="space-y-2 mb-4">
-                            {/* Assuming we might fetch items separately or they are included. 
-                                OrdersContext implementation suggests items are stored in a separate table but joined?
-                                Actually, fetchOrders in OrdersContext selects '*', it might NOT include items if not joined.
-                                Let's check if items are fetched. If not, we might need to rely on order summarization or fetch them.
-                                Checking previous context: OrdersContext fetches 'orders' table. Items are in 'order_items'.
-                                The current fetchOrders does NOT join items.
-                                However, for simple display, maybe we just show total items count or "Lihat Detail" if we can't show items easily without huge refactor.
-                                
-                                Wait, addOrder puts items in 'order_items'.
-                                fetchOrders only selects from 'orders'.
-                                
-                                We should update OrdersContext to fetch items OR just show limited info here.
-                                For now, let's show "x Item" based on total_amount estimate or just "Lihat Detail" (but we don't have detail page).
-                                
-                                Actually, let's keep it simple. Just show Status, Date, Total Amount.
-                                If we want to show items, we need to update fetchQuery to join.
-                            */}
-                            <div className="p-3 bg-neutral-50 rounded-xl text-sm text-neutral-600 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-neutral-400">info</span>
-                                <span>Detail menu tidak ditampilkan (Mode Ringkas)</span>
-                            </div>
+                            {order.items && order.items.length > 0 ? (
+                                <div className="bg-neutral-50 rounded-xl p-3 space-y-2">
+                                    {order.items.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-center text-sm">
+                                            <span className="text-neutral-700">
+                                                {item.name} <span className="text-neutral-400">x{item.quantity}</span>
+                                            </span>
+                                            <span className="font-semibold text-neutral-800">{formatRupiah((item.price || 0) * (item.quantity || 1))}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="p-3 bg-neutral-50 rounded-xl text-sm text-neutral-500 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-neutral-400">info</span>
+                                    <span>Detail item tidak tersedia</span>
+                                </div>
+                            )}
                             {order.notes && (
                                 <div className="text-xs text-neutral-500 italic bg-yellow-50 p-2 rounded-lg border border-yellow-100">
                                     Catatan: "{order.notes}"
@@ -96,16 +108,49 @@ export default function CustomerOrdersPage() {
                             )}
                         </div>
 
-                        {/* Action Buttons for active orders? */}
-                        {order.payment_method === 'cashless' && order.payment_proof_path && (
-                            <div className="mt-3 text-xs text-blue-600 flex items-center gap-1">
-                                <span className="material-symbols-outlined text-sm">check_circle</span>
-                                Bukti Bayar Terupload
-                            </div>
-                        )}
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 flex-wrap">
+                            {/* Batalkan Pesanan — only for pending orders */}
+                            {order.status === 'pending' && (
+                                <button
+                                    onClick={() => handleDelete(order)}
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-500 border border-red-100 rounded-xl text-sm font-bold hover:bg-red-100 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-lg">cancel</span>
+                                    Batalkan Pesanan
+                                </button>
+                            )}
+
+                            {/* Print Nota — only for completed orders */}
+                            {order.status === 'completed' && (
+                                <button
+                                    onClick={() => setPrintOrder(order)}
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-green-50 text-green-600 border border-green-100 rounded-xl text-sm font-bold hover:bg-green-100 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-lg">print</span>
+                                    Print Nota
+                                </button>
+                            )}
+
+                            {order.payment_method === 'cashless' && order.payment_proof_path && (
+                                <div className="flex items-center gap-1 text-xs text-blue-600">
+                                    <span className="material-symbols-outlined text-sm">check_circle</span>
+                                    Bukti Bayar Terupload
+                                </div>
+                            )}
+                        </div>
                     </div>
                 ))}
             </div>
+
+            {/* Print Nota Modal */}
+            {printOrder && (
+                <PrintNota
+                    order={printOrder}
+                    userEmail={user?.email || '-'}
+                    onClose={() => setPrintOrder(null)}
+                />
+            )}
         </div>
     )
 }

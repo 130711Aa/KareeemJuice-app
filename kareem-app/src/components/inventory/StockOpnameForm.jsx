@@ -6,7 +6,7 @@ export default function StockOpnameForm({ onSuccess }) {
     const [materials, setMaterials] = useState([])
     const [selectedMaterialId, setSelectedMaterialId] = useState('')
     const [currentSystemStock, setCurrentSystemStock] = useState(0)
-    const [physicalStock, setPhysicalStock] = useState('')
+    const [addQuantity, setAddQuantity] = useState('')
     const [loading, setLoading] = useState(false)
     const [submitting, setSubmitting] = useState(false)
 
@@ -41,42 +41,38 @@ export default function StockOpnameForm({ onSuccess }) {
         } else {
             setCurrentSystemStock(0)
         }
-        setPhysicalStock('')
+        setAddQuantity('')
     }
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        if (!selectedMaterialId || physicalStock === '') return
+        if (!selectedMaterialId || addQuantity === '' || parseInt(addQuantity) <= 0) {
+            toast.error('Jumlah harus lebih dari 0')
+            return
+        }
 
         setSubmitting(true)
         try {
-            const physical = parseInt(physicalStock)
-            const difference = physical - currentSystemStock
+            const qty = parseInt(addQuantity)
 
-            if (difference === 0) {
-                toast.success('Stok fisik sama dengan sistem. Tidak ada perubahan.')
-                setSubmitting(false)
-                return
-            }
-
-            // Insert Adjustment Movement
+            // Insert IN movement (addition only)
             const { error } = await supabase
                 .from('raw_material_movements')
                 .insert({
                     raw_material_id: parseInt(selectedMaterialId),
-                    movement_type: 'ADJUSTMENT',
-                    quantity: difference, // Can be positive or negative
-                    reference_type: 'STOCK_OPNAME',
-                    notes: `Stock Opname: System(${currentSystemStock}) -> Physical(${physical})`
+                    movement_type: 'IN',
+                    quantity: qty,
+                    reference_type: 'PURCHASE',
+                    notes: `Input Bahan Baku: +${qty} (Stok sebelumnya: ${currentSystemStock})`
                 })
 
             if (error) throw error
 
-            toast.success('Stock Opname berhasil disimpan!')
+            toast.success(`Berhasil menambah ${qty} ${selectedMaterial?.unit || ''} bahan baku!`)
 
             // Reset form
             setSelectedMaterialId('')
-            setPhysicalStock('')
+            setAddQuantity('')
             setCurrentSystemStock(0)
 
             // Refresh parent and local data
@@ -85,7 +81,7 @@ export default function StockOpnameForm({ onSuccess }) {
 
         } catch (err) {
             console.error(err)
-            toast.error('Gagal menyimpan Stock Opname: ' + err.message)
+            toast.error('Gagal menyimpan: ' + err.message)
         } finally {
             setSubmitting(false)
         }
@@ -96,8 +92,8 @@ export default function StockOpnameForm({ onSuccess }) {
     return (
         <div className="p-6 max-w-2xl mx-auto">
             <h3 className="text-lg font-bold text-stone-800 mb-6 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#ff8c00]">fact_check</span>
-                Input Stock Opname
+                <span className="material-symbols-outlined text-[#ff8c00]">add_circle</span>
+                Input Bahan Baku
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -121,7 +117,7 @@ export default function StockOpnameForm({ onSuccess }) {
                 {selectedMaterialId && (
                     <div className="bg-orange-50 p-4 rounded-xl border border-[#ff8c00]/20 flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-stone-500 font-medium">Stok Tercatat di Sistem</p>
+                            <p className="text-sm text-stone-500 font-medium">Stok Saat Ini</p>
                             <p className="text-2xl font-bold text-[#ff8c00]">{currentSystemStock} <span className="text-sm font-normal text-stone-600">{selectedMaterial?.unit}</span></p>
                         </div>
                         <div className="text-right">
@@ -133,14 +129,15 @@ export default function StockOpnameForm({ onSuccess }) {
                 )}
 
                 <div>
-                    <label className="block text-sm font-bold text-stone-700 mb-2">Stok Fisik (Hasil Opname)</label>
+                    <label className="block text-sm font-bold text-stone-700 mb-2">Jumlah yang Ditambahkan</label>
                     <div className="relative">
                         <input
                             type="number"
-                            value={physicalStock}
-                            onChange={e => setPhysicalStock(e.target.value)}
+                            min="1"
+                            value={addQuantity}
+                            onChange={e => setAddQuantity(e.target.value)}
                             className="w-full p-3 bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ff8c00] transition-shadow pl-4 pr-12"
-                            placeholder="Contoh: 1000"
+                            placeholder="Contoh: 500"
                             required
                         />
                         {selectedMaterial && (
@@ -149,30 +146,29 @@ export default function StockOpnameForm({ onSuccess }) {
                             </span>
                         )}
                     </div>
-                    <p className="text-xs text-stone-500 mt-2">Masukan jumlah stok riil yang ada di gudang/toko.</p>
+                    <p className="text-xs text-stone-500 mt-2">Masukan jumlah bahan baku yang masuk/dibeli.</p>
                 </div>
 
-                {physicalStock !== '' && selectedMaterialId && (
-                    <div className="p-4 bg-stone-50 rounded-xl">
-                        <p className="text-sm font-bold text-stone-700 mb-1">Preview Penyesuaian:</p>
-                        {(() => {
-                            const diff = parseInt(physicalStock) - currentSystemStock
-                            return (
-                                <p className={`text-lg font-bold ${diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-stone-500'}`}>
-                                    {diff > 0 ? '+' : ''}{diff} {selectedMaterial?.unit}
-                                </p>
-                            )
-                        })()}
-                        <p className="text-xs text-stone-500">Sistem akan otomatis membuat record adjustment sebesar selisih ini.</p>
+                {addQuantity !== '' && selectedMaterialId && parseInt(addQuantity) > 0 && (
+                    <div className="p-4 bg-green-50 rounded-xl border border-green-100">
+                        <p className="text-sm font-bold text-stone-700 mb-1">Preview Penambahan:</p>
+                        <div className="flex items-center gap-3">
+                            <span className="text-stone-600">{currentSystemStock} {selectedMaterial?.unit}</span>
+                            <span className="material-symbols-outlined text-green-600">arrow_forward</span>
+                            <span className="text-lg font-bold text-green-600">
+                                {currentSystemStock + parseInt(addQuantity)} {selectedMaterial?.unit}
+                            </span>
+                        </div>
+                        <p className="text-xs text-green-600 mt-1 font-medium">+{addQuantity} {selectedMaterial?.unit} akan ditambahkan</p>
                     </div>
                 )}
 
                 <button
                     type="submit"
-                    disabled={submitting || !selectedMaterialId}
+                    disabled={submitting || !selectedMaterialId || !addQuantity || parseInt(addQuantity) <= 0}
                     className="w-full bg-[#ff8c00] text-white font-bold py-3 rounded-xl hover:bg-[#e67e00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#ff8c00]/20"
                 >
-                    {submitting ? 'Menyimpan...' : 'Simpan Stock Opname'}
+                    {submitting ? 'Menyimpan...' : 'Tambah Bahan Baku'}
                 </button>
             </form>
         </div>

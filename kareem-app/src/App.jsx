@@ -10,6 +10,7 @@ import CartDrawer from './components/CartDrawer'
 import ProtectedRoute from './components/ProtectedRoute'
 import AuthPage from './pages/AuthPage'
 import CustomerOrdersPage from './pages/CustomerOrdersPage'
+import ProfilePage from './pages/ProfilePage'
 import MenuPage from './pages/MenuPage'
 import AdminDashboard from './pages/AdminDashboard'
 import MenuManagement from './pages/MenuManagement'
@@ -35,6 +36,7 @@ function AppContent() {
                     <Route path="/" element={<MenuPage />} />
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/orders" element={<CustomerOrdersPage />} />
+                    <Route path="/profile" element={<ProfilePage />} />
 
                     {/* Admin Login (public) - now consolidated to /auth */}
                     <Route path="/admin/analytics" element={<AnalyticsPage />} />
@@ -67,7 +69,7 @@ function AppContent() {
             </div>
             {/* Cart drawer only for customer pages */}
             {!isAdmin && <CartDrawer />}
-            <Toaster position="bottom-center" />
+            <Toaster position="top-center" toastOptions={{ style: { pointerEvents: 'auto' }, duration: 2500 }} />
         </div>
     )
 }

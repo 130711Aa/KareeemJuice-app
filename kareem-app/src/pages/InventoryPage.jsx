@@ -25,7 +25,7 @@ export default function InventoryPage() {
                 <div className="flex p-1 bg-stone-100 rounded-xl overflow-x-auto max-w-full">
                     {[
                         { id: 'stock', label: 'Stok Saat Ini', icon: 'inventory_2' },
-                        { id: 'opname', label: 'Stock Opname', icon: 'fact_check' },
+                        { id: 'opname', label: 'Input Bahan', icon: 'add_circle' },
                         { id: 'recipes', label: 'Resep Produk', icon: 'menu_book' },
                         { id: 'movements', label: 'Riwayat', icon: 'history' },
                     ].map(tab => (
@@ -33,8 +33,8 @@ export default function InventoryPage() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id
-                                    ? 'bg-white text-[#ff8c00] shadow-sm'
-                                    : 'text-stone-500 hover:text-stone-800'
+                                ? 'bg-white text-[#ff8c00] shadow-sm'
+                                : 'text-stone-500 hover:text-stone-800'
                                 }`}
                         >
                             <span className="material-symbols-outlined text-lg">{tab.icon}</span>

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
+import toast from 'react-hot-toast'
 
 const OrdersContext = createContext()
 
@@ -23,11 +24,11 @@ export function OrdersProvider({ children }) {
     useEffect(() => {
         if (!loading && orders.length > 0) {
             try {
-                localStorage.setItem('kareeem_orders', JSON.stringify(orders))
+                // Only persist the 20 most recent orders to avoid QuotaExceededError
+                const ordersToCache = orders.slice(0, 20)
+                localStorage.setItem('kareeem_orders', JSON.stringify(ordersToCache))
             } catch (err) {
-                console.error('Failed to save orders to localStorage (Quota Exceeded?):', err)
-                // If quota exceeded, we might want to clear old orders or just ignore.
-                // For now, logging prevents the crash.
+                console.warn('Failed to save orders to localStorage (Quota Exceeded):', err)
             }
         } else if (!loading && orders.length === 0) {
             // Optional: clear if empty? Or keep?
@@ -188,17 +189,39 @@ export function OrdersProvider({ children }) {
                         if (!error && newOrder) {
                             setOrders(prev => {
                                 if (prev.some(o => o.id === newOrder.id)) return prev
+                                // Toast for new order (likely for Admin/Kitchen view)
+                                toast.success(`Pesanan Baru Masuk! #${newOrder.order_number}`, {
+                                    icon: '🔔',
+                                    position: 'top-right',
+                                    duration: 4000
+                                })
                                 const updated = [newOrder, ...prev]
                                 updated.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
                                 return updated
                             })
                         }
                     } else if (payload.eventType === 'UPDATE') {
-                        setOrders(prev => prev.map(order =>
-                            order.id === payload.new.id ? { ...order, ...payload.new } : order
-                        ))
+                        setOrders(prev => prev.map(order => {
+                            if (order.id === payload.new.id) {
+                                // Toast for order update (Customer view)
+                                if (order.status !== payload.new.status) {
+                                    const emoji = payload.new.status === 'completed' ? '✅' :
+                                        payload.new.status === 'processing' ? '👨‍🍳' :
+                                            payload.new.status === 'cancelled' ? '❌' : 'ℹ️';
+
+                                    // Notification for customer: "Status pesanan Anda updated!"
+                                    toast(`Status Pesanan #${order.order_number} Update: ${payload.new.status}`, {
+                                        icon: emoji,
+                                        position: 'top-center'
+                                    })
+                                }
+                                return { ...order, ...payload.new }
+                            }
+                            return order
+                        }))
                     } else if (payload.eventType === 'DELETE') {
                         setOrders(prev => prev.filter(order => order.id !== payload.old.id))
+                        toast('Pesanan dihapus', { icon: '🗑️' })
                     }
                 }
             )

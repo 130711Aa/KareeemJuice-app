@@ -29,6 +29,9 @@ function CustomerNavbar() {
                         <Link to="/orders" className="bg-[#ff8c00]/10 hover:bg-[#ff8c00]/20 text-[#ff8c00] p-2 rounded-xl transition-colors" title="Pesanan Saya">
                             <span className="material-symbols-outlined text-xl">receipt_long</span>
                         </Link>
+                        <Link to="/profile" className="bg-purple-50 hover:bg-purple-100 text-purple-500 p-2 rounded-xl transition-colors" title="Profil Saya">
+                            <span className="material-symbols-outlined text-xl">person</span>
+                        </Link>
                         <button
                             onClick={logout}
                             className="bg-red-50 hover:bg-red-100 text-red-500 p-2 rounded-xl transition-colors"

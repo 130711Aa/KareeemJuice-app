@@ -30,8 +30,11 @@ export function ProductsProvider({ children }) {
 
             if (data) {
                 setProducts(data)
-                // Backup to local storage for offline support
-                localStorage.setItem('kareeem_products', JSON.stringify(data))
+                try {
+                    localStorage.setItem('kareeem_products', JSON.stringify(data))
+                } catch (e) {
+                    // Quota exceeded — not critical, DB is source of truth
+                }
             }
         } catch (err) {
             console.error('Error fetching products:', err)
@@ -48,7 +51,11 @@ export function ProductsProvider({ children }) {
     const save = async (updatedProducts) => {
         // Optimistic update
         setProducts(updatedProducts)
-        localStorage.setItem('kareeem_products', JSON.stringify(updatedProducts))
+        try {
+            localStorage.setItem('kareeem_products', JSON.stringify(updatedProducts))
+        } catch (e) {
+            // Quota exceeded — safe to ignore
+        }
 
         // Note: Real saving to DB would happen in add/update/delete functions
         // For now we just implement the read part mainly.
