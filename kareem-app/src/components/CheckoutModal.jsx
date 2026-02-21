@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useCart } from '../context/CartContext'
 import { useOrders } from '../context/OrdersContext'
 import { useAuth } from '../context/AuthContext'
+import { useStoreStatus } from '../context/StoreStatusContext'
 import { formatRupiah } from '../lib/utils'
 import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
@@ -15,6 +16,7 @@ export default function CheckoutModal({ onClose, onSuccess }) {
     const { items, totalPrice, clearCart } = useCart()
     const { addOrder } = useOrders()
     const { user } = useAuth()
+    const { isOpen: storeIsOpen } = useStoreStatus()
     const [form, setForm] = useState({
         name: user?.user_metadata?.name || '',
         phone: user?.user_metadata?.phone || '',
@@ -84,6 +86,11 @@ export default function CheckoutModal({ onClose, onSuccess }) {
         if (loading) return
         if (!form.name.trim() || !form.phone.trim()) {
             toast.error('Nama dan nomor HP wajib diisi!')
+            return
+        }
+
+        if (!storeIsOpen) {
+            toast.error('Maaf, toko sedang tutup!')
             return
         }
 
@@ -344,7 +351,7 @@ export default function CheckoutModal({ onClose, onSuccess }) {
 
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || !storeIsOpen}
                         className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98]"
                     >
                         {loading ? (

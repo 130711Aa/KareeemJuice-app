@@ -97,6 +97,46 @@ CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON public.order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON public.order_items(product_id);
 
+-- RLS for Orders
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Customers can view own orders" ON public.orders
+    FOR SELECT USING (
+        auth.uid() = user_id
+        OR auth.jwt() ->> 'email' = 'admin@kareeemjuice.com'
+    );
+
+CREATE POLICY "Customers can insert own orders" ON public.orders
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Admin can update all orders" ON public.orders
+    FOR UPDATE USING (auth.jwt() ->> 'email' = 'admin@kareeemjuice.com');
+
+CREATE POLICY "Admin can delete all orders" ON public.orders
+    FOR DELETE USING (
+        auth.uid() = user_id
+        OR auth.jwt() ->> 'email' = 'admin@kareeemjuice.com'
+    );
+
+-- RLS for Order Items
+ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view order items for own orders" ON public.order_items
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM public.orders WHERE orders.id = order_items.order_id
+            AND (orders.user_id = auth.uid() OR auth.jwt() ->> 'email' = 'admin@kareeemjuice.com')
+        )
+    );
+
+CREATE POLICY "Users can insert order items" ON public.order_items
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.orders WHERE orders.id = order_items.order_id
+            AND orders.user_id = auth.uid()
+        )
+    );
+
 -- ============================================================================
 -- 4. INVENTORY SYSTEM
 -- ============================================================================
