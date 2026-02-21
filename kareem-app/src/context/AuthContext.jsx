@@ -8,6 +8,7 @@ export function AuthProvider({ children }) {
     const [session, setSession] = useState(null)
     const [loading, setLoading] = useState(true)
     const [isAdmin, setIsAdmin] = useState(false)
+    const [isRecovering, setIsRecovering] = useState(false)
 
     useEffect(() => {
         // Check active session
@@ -32,7 +33,13 @@ export function AuthProvider({ children }) {
         initSession()
 
         // Listen for changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log("Global Auth Event:", event)
+
+            if (event === 'PASSWORD_RECOVERY') {
+                setIsRecovering(true)
+            }
+
             setSession(session)
             setUser(session?.user ?? null)
             checkAdmin(session?.user)
@@ -92,6 +99,16 @@ export function AuthProvider({ children }) {
         setLoading(false)
     }
 
+    const updatePassword = async (newPassword) => {
+        setLoading(true)
+        const { data, error } = await supabase.auth.updateUser({
+            password: newPassword
+        })
+        setLoading(false)
+        if (error) return { success: false, error: error.message }
+        return { success: true, data }
+    }
+
     const value = {
         user,
         session,
@@ -101,7 +118,10 @@ export function AuthProvider({ children }) {
         isAuthenticated: !!user,
         login,
         signup,
-        logout
+        logout,
+        updatePassword,
+        isRecovering,
+        setIsRecovering
     }
 
     return (

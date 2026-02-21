@@ -1,24 +1,44 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { toast } from 'react-hot-toast'
 
 export default function AuthPage() {
-    const [mode, setMode] = useState('login') // 'login' or 'register'
+    const [mode, setMode] = useState('login') // 'login', 'register', 'update-password', or 'forgot-password'
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [name, setName] = useState('')
     const [phone, setPhone] = useState('')
     const [showPassword, setShowPassword] = useState(false)
 
-    const { login, signup, loading } = useAuth()
+    const { login, signup, loading, updatePassword, isRecovering, setIsRecovering } = useAuth()
     const navigate = useNavigate()
+
+    // Listen for password recovery
+    useEffect(() => {
+        if (isRecovering) {
+            setMode('update-password')
+        }
+    }, [isRecovering])
+
+    // Initial Fragment Check (just in case)
+    useEffect(() => {
+        if (window.location.hash.includes('type=recovery')) {
+            setMode('update-password')
+        }
+    }, [])
 
     const handleSubmit = async (e) => {
         e.preventDefault()
 
-        if (!email.trim() || !password.trim()) {
-            toast.error('Email dan password wajib diisi!')
+        if (mode === 'forgot-password' && !email.trim()) {
+            toast.error('Email wajib diisi!')
+            return
+        }
+
+        if (mode !== 'forgot-password' && mode !== 'update-password' && !password.trim()) {
+            toast.error('Password wajib diisi!')
             return
         }
 
@@ -30,25 +50,45 @@ export default function AuthPage() {
         let result
         if (mode === 'login') {
             result = await login(email, password)
-        } else {
+        } else if (mode === 'register') {
             result = await signup(email, password, { name, phone })
+        } else if (mode === 'update-password') {
+            result = await updatePassword(password)
+        } else if (mode === 'forgot-password') {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/auth`
+            })
+            if (error) {
+                result = { success: false, error: error.message }
+            } else {
+                result = { success: true }
+            }
         }
 
         if (result.success) {
             // Check if we have a session (Auto Confirm enabled)
             if (result.data?.session) {
-                toast.success('Berhasil masuk!')
+                toast.success(mode === 'update-password' ? 'Password berhasil diperbarui!' : 'Berhasil masuk!')
                 if (email === 'admin@kareeemjuice.com') {
                     navigate('/admin')
                 } else {
                     navigate('/')
                 }
             } else {
-                toast.success(mode === 'login' ? 'Berhasil masuk!' : 'Registrasi berhasil! Silakan cek email untuk verifikasi.')
-                if (mode === 'login' && email === 'admin@kareeemjuice.com') {
-                    navigate('/admin')
-                } else if (mode === 'login') {
-                    navigate('/')
+                let successMsg = ''
+                if (mode === 'login') successMsg = 'Berhasil masuk!'
+                else if (mode === 'register') successMsg = 'Registrasi berhasil! Silakan cek email untuk verifikasi.'
+                else if (mode === 'update-password') successMsg = 'Password berhasil diperbarui!'
+                else if (mode === 'forgot-password') successMsg = 'Link reset password telah dikirim ke email kamu!'
+
+                toast.success(successMsg)
+
+                if (mode === 'login' || mode === 'update-password') {
+                    if (mode === 'update-password') setIsRecovering(false)
+                    if (email === 'admin@kareeemjuice.com') navigate('/admin')
+                    else navigate('/')
+                } else if (mode === 'forgot-password') {
+                    setMode('login')
                 }
             }
         } else {
@@ -65,26 +105,44 @@ export default function AuthPage() {
                         <span className="material-symbols-outlined text-3xl">local_drink</span>
                     </button>
                     <h1 className="text-2xl font-black tracking-tight text-[#181510]">Kareeem Juice</h1>
-                    <p className="text-sm text-neutral-500 mt-1">Nikmati kesegaran jus terbaik!</p>
+                    <p className="text-sm text-neutral-500 mt-1">
+                        {mode === 'update-password' ? 'Silakan masukkan password baru kamu' :
+                            mode === 'forgot-password' ? 'Masukkan email untuk menerima link reset' :
+                                'Nikmati kesegaran jus terbaik!'}
+                    </p>
                 </div>
 
                 {/* Auth Card */}
                 <div className="bg-white rounded-2xl border border-[#ff8c00]/10 shadow-xl shadow-black/5 overflow-hidden">
-                    {/* Tabs */}
-                    <div className="flex border-b border-[#ff8c00]/10">
-                        <button
-                            className={`flex-1 py-4 text-sm font-bold transition-colors ${mode === 'login' ? 'bg-[#ff8c00]/5 text-[#ff8c00]' : 'text-neutral-400 hover:text-neutral-600'}`}
-                            onClick={() => setMode('login')}
-                        >
-                            Masuk
-                        </button>
-                        <button
-                            className={`flex-1 py-4 text-sm font-bold transition-colors ${mode === 'register' ? 'bg-[#ff8c00]/5 text-[#ff8c00]' : 'text-neutral-400 hover:text-neutral-600'}`}
-                            onClick={() => setMode('register')}
-                        >
-                            Daftar
-                        </button>
-                    </div>
+                    {/* Tabs - Hidden in special modes */}
+                    {(mode !== 'update-password' && mode !== 'forgot-password') && (
+                        <div className="flex border-b border-[#ff8c00]/10">
+                            <button
+                                className={`flex-1 py-4 text-sm font-bold transition-colors ${mode === 'login' ? 'bg-[#ff8c00]/5 text-[#ff8c00]' : 'text-neutral-400 hover:text-neutral-600'}`}
+                                onClick={() => setMode('login')}
+                            >
+                                Masuk
+                            </button>
+                            <button
+                                className={`flex-1 py-4 text-sm font-bold transition-colors ${mode === 'register' ? 'bg-[#ff8c00]/5 text-[#ff8c00]' : 'text-neutral-400 hover:text-neutral-600'}`}
+                                onClick={() => setMode('register')}
+                            >
+                                Daftar
+                            </button>
+                        </div>
+                    )}
+
+                    {mode === 'update-password' && (
+                        <div className="bg-[#ff8c00]/5 p-4 border-b border-[#ff8c00]/10">
+                            <p className="text-xs font-bold text-[#ff8c00] text-center uppercase tracking-wider">Ganti Password</p>
+                        </div>
+                    )}
+
+                    {mode === 'forgot-password' && (
+                        <div className="bg-[#ff8c00]/5 p-4 border-b border-[#ff8c00]/10">
+                            <p className="text-xs font-bold text-[#ff8c00] text-center uppercase tracking-wider">Lupa Password</p>
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit} className="p-8 space-y-4">
                         {mode === 'register' && (
@@ -112,46 +170,114 @@ export default function AuthPage() {
                             </>
                         )}
 
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-neutral-600">Email</label>
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
-                                className="w-full px-4 py-3 bg-[#fcfaf8] border border-[#ff8c00]/10 rounded-xl text-sm focus:ring-2 focus:ring-[#ff8c00]/30 outline-none"
-                                placeholder="nama@email.com"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-neutral-600">Password</label>
-                            <div className="relative">
+                        {mode !== 'update-password' && (
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-neutral-600">Email</label>
                                 <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={password}
-                                    onChange={e => setPassword(e.target.value)}
-                                    className="w-full px-4 py-3 bg-[#fcfaf8] border border-[#ff8c00]/10 rounded-xl text-sm focus:ring-2 focus:ring-[#ff8c00]/30 outline-none pr-10"
-                                    placeholder="minimal 6 karakter"
+                                    type="email"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    className="w-full px-4 py-3 bg-[#fcfaf8] border border-[#ff8c00]/10 rounded-xl text-sm focus:ring-2 focus:ring-[#ff8c00]/30 outline-none"
+                                    placeholder="nama@email.com"
                                 />
+                            </div>
+                        )}
+
+                        {(mode !== 'forgot-password' && mode !== 'update-password') && (
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-neutral-600">Password</label>
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        className="w-full px-4 py-3 bg-[#fcfaf8] border border-[#ff8c00]/10 rounded-xl text-sm focus:ring-2 focus:ring-[#ff8c00]/30 outline-none pr-10"
+                                        placeholder="minimal 6 karakter"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-[#ff8c00]"
+                                    >
+                                        <span className="material-symbols-outlined text-lg">
+                                            {showPassword ? 'visibility_off' : 'visibility'}
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {mode === 'update-password' && (
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-neutral-600">Password Baru</label>
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        className="w-full px-4 py-3 bg-[#fcfaf8] border border-[#ff8c00]/10 rounded-xl text-sm focus:ring-2 focus:ring-[#ff8c00]/30 outline-none pr-10"
+                                        placeholder="minimal 6 karakter"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-[#ff8c00]"
+                                    >
+                                        <span className="material-symbols-outlined text-lg">
+                                            {showPassword ? 'visibility_off' : 'visibility'}
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {mode === 'login' && (
+                            <div className="text-right">
                                 <button
                                     type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-[#ff8c00]"
+                                    onClick={() => setMode('forgot-password')}
+                                    className="text-xs font-bold text-[#ff8c00] hover:underline"
                                 >
-                                    <span className="material-symbols-outlined text-lg">
-                                        {showPassword ? 'visibility_off' : 'visibility'}
-                                    </span>
+                                    Lupa Password?
                                 </button>
                             </div>
-                        </div>
+                        )}
 
                         <button
                             type="submit"
                             disabled={loading}
                             className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-sm hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 mt-4 disabled:opacity-60"
                         >
-                            {loading ? 'Memproses...' : (mode === 'login' ? 'Masuk Sekarang' : 'Daftar Sekarang')}
+                            {loading ? 'Memproses...' : (
+                                mode === 'login' ? 'Masuk Sekarang' :
+                                    mode === 'register' ? 'Daftar Sekarang' :
+                                        mode === 'forgot-password' ? 'Kirim Link Reset' :
+                                            'Simpan Password Baru'
+                            )}
                         </button>
+
+                        {mode === 'update-password' && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setMode('login')
+                                    setIsRecovering(false)
+                                }}
+                                className="w-full text-neutral-400 text-xs font-bold py-2 hover:text-neutral-600 transition-colors"
+                            >
+                                Batal
+                            </button>
+                        )}
+
+                        {mode === 'forgot-password' && (
+                            <button
+                                type="button"
+                                onClick={() => setMode('login')}
+                                className="w-full text-neutral-400 text-xs font-bold py-2 hover:text-neutral-600 transition-colors"
+                            >
+                                Batal
+                            </button>
+                        )}
                     </form>
                 </div>
             </div>

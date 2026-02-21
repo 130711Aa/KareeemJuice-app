@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useOrders } from '../context/OrdersContext'
 import { formatRupiah } from '../lib/utils'
 
@@ -41,6 +41,7 @@ export default function OrdersPage() {
     const [activeFilter, setActiveFilter] = useState('all')
     const [expandedOrder, setExpandedOrder] = useState(null)
     const [proofModal, setProofModal] = useState(null) // URL of proof to preview
+    const [printOrder, setPrintOrder] = useState(null)
 
     const todaysOrders = useMemo(() => {
         // 1. Get Current Time (WIB/Local)
@@ -342,13 +343,22 @@ export default function OrdersPage() {
 
                                         {/* Action Buttons */}
                                         <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#ff8c00]/10">
-                                            <button
-                                                onClick={() => deleteOrder(order.id)}
-                                                className="flex items-center gap-1.5 text-red-400 hover:text-red-600 text-sm font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50"
-                                            >
-                                                <span className="material-symbols-outlined text-lg">delete</span>
-                                                Hapus
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => deleteOrder(order.id)}
+                                                    className="flex items-center gap-1.5 text-red-400 hover:text-red-600 text-sm font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50"
+                                                >
+                                                    <span className="material-symbols-outlined text-lg">delete</span>
+                                                    Hapus
+                                                </button>
+                                                <button
+                                                    onClick={() => setPrintOrder(order)}
+                                                    className="flex items-center gap-1.5 text-neutral-500 hover:text-[#ff8c00] text-sm font-medium transition-colors px-3 py-2 rounded-lg hover:bg-orange-50"
+                                                >
+                                                    <span className="material-symbols-outlined text-lg">print</span>
+                                                    Print
+                                                </button>
+                                            </div>
 
                                             {config.next && (
                                                 <button
@@ -395,6 +405,83 @@ export default function OrdersPage() {
                     </div>
                 </div>
             )}
+
+            {/* Hidden Print Receipt */}
+            {printOrder && (
+                <PrintReceipt order={printOrder} onDone={() => setPrintOrder(null)} />
+            )}
         </main>
+    )
+}
+
+// ==========================================
+// Print Receipt Sub-Component (76mm thermal)
+// ==========================================
+function PrintReceipt({ order, onDone }) {
+    const hasPrinted = useRef(false)
+
+    useEffect(() => {
+        if (!hasPrinted.current) {
+            hasPrinted.current = true
+            setTimeout(() => {
+                window.print()
+                onDone()
+            }, 200)
+        }
+    }, [onDone])
+
+    const formatDate = (iso) => {
+        const d = new Date(iso)
+        return d.toLocaleString('id-ID', {
+            day: 'numeric', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit',
+        })
+    }
+
+    return (
+        <div id="print-receipt" style={{ position: 'fixed', top: 0, left: 0, zIndex: -1 }}>
+            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>KAREEEM JUICE</div>
+                <div style={{ fontSize: '10px' }}>Fresh & Ready to Go</div>
+                <div style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
+            </div>
+
+            <div style={{ marginBottom: '6px', fontSize: '11px' }}>
+                <div><strong>No:</strong> {order.order_number}</div>
+                <div><strong>Tgl:</strong> {formatDate(order.created_at)}</div>
+                <div><strong>Nama:</strong> {order.customer_name}</div>
+                {order.customer_phone && <div><strong>Telp:</strong> {order.customer_phone}</div>}
+                {order.customer_address && <div><strong>Alamat:</strong> {order.customer_address}</div>}
+                <div><strong>Bayar:</strong> {order.payment_method === 'cashless' ? 'QRIS' : 'Cash'}</div>
+            </div>
+
+            <div style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
+
+            {order.items?.map((item, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '2px' }}>
+                    <span>{item.name} x{item.quantity}</span>
+                    <span>{formatRupiah(item.price * item.quantity)}</span>
+                </div>
+            ))}
+
+            <div style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
+                <span>TOTAL</span>
+                <span>{formatRupiah(order.total_amount)}</span>
+            </div>
+
+            {order.notes && (
+                <div style={{ marginTop: '6px', fontSize: '10px', fontStyle: 'italic' }}>
+                    Catatan: {order.notes}
+                </div>
+            )}
+
+            <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px' }}>
+                <div style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
+                <div>Terima kasih! 🍊</div>
+                <div>Kareeem Juice — Pesan Online</div>
+            </div>
+        </div>
     )
 }

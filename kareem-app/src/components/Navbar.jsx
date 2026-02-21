@@ -20,24 +20,24 @@ function CustomerNavbar() {
                 </div>
             </Link>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
                 {user ? (
-                    <div className="flex items-center gap-3">
-                        <span className="hidden md:inline text-sm font-medium text-neutral-600">
+                    <div className="flex items-center gap-1.5">
+                        <span className="hidden md:inline text-sm font-medium text-neutral-600 mr-1">
                             Hi, {user.user_metadata?.name?.split(' ')[0] || 'Kak'}
                         </span>
-                        <Link to="/orders" className="bg-[#ff8c00]/10 hover:bg-[#ff8c00]/20 text-[#ff8c00] p-2 rounded-xl transition-colors" title="Pesanan Saya">
-                            <span className="material-symbols-outlined text-xl">receipt_long</span>
+                        <Link to="/orders" className="size-10 flex items-center justify-center bg-[#ff8c00]/10 hover:bg-[#ff8c00]/20 text-[#ff8c00] rounded-xl transition-colors" title="Pesanan Saya">
+                            <span className="material-symbols-outlined text-[20px]">receipt_long</span>
                         </Link>
-                        <Link to="/profile" className="bg-purple-50 hover:bg-purple-100 text-purple-500 p-2 rounded-xl transition-colors" title="Profil Saya">
-                            <span className="material-symbols-outlined text-xl">person</span>
+                        <Link to="/profile" className="size-10 flex items-center justify-center bg-purple-50 hover:bg-purple-100 text-purple-500 rounded-xl transition-colors" title="Profil Saya">
+                            <span className="material-symbols-outlined text-[20px]">person</span>
                         </Link>
                         <button
                             onClick={logout}
-                            className="bg-red-50 hover:bg-red-100 text-red-500 p-2 rounded-xl transition-colors"
+                            className="size-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-colors"
                             title="Keluar"
                         >
-                            <span className="material-symbols-outlined text-xl">logout</span>
+                            <span className="material-symbols-outlined text-[20px]">logout</span>
                         </button>
                     </div>
                 ) : (
@@ -51,9 +51,9 @@ function CustomerNavbar() {
 
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="relative flex items-center gap-2 bg-[#ff8c00] hover:bg-[#e67e00] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-[#ff8c00]/20 active:scale-95"
+                    className="relative flex items-center gap-2 bg-[#ff8c00] hover:bg-[#e67e00] text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-[#ff8c00]/20 active:scale-95"
                 >
-                    <span className="material-symbols-outlined text-xl">shopping_cart</span>
+                    <span className="material-symbols-outlined text-[20px]">shopping_cart</span>
                     <span className="hidden sm:inline">Keranjang</span>
                     {totalItems > 0 && (
                         <span className="absolute -top-2 -right-2 size-6 bg-red-500 text-white rounded-full text-[11px] font-bold flex items-center justify-center badge-pulse shadow-md">

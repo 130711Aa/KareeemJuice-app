@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useOrders } from '../context/OrdersContext'
 import { useCategories } from '../context/CategoriesContext'
 import { useProducts } from '../context/ProductsContext'
+import { useStoreStatus } from '../context/StoreStatusContext'
 import { formatRupiah } from '../lib/utils'
 
 export default function AdminDashboard() {
     const { orders } = useOrders()
     const { categories } = useCategories()
     const { products } = useProducts()
+    const { isStoreOpen, toggleStore } = useStoreStatus()
     const navigate = useNavigate()
 
 
@@ -116,6 +118,26 @@ export default function AdminDashboard() {
                     <div>
                         <h2 className="text-2xl font-bold tracking-tight">Ikhtisar Dashboard</h2>
                         <p className="text-orange-800/60 font-medium">Selamat datang, Kareeem! Berikut data terkini.</p>
+                    </div>
+                    <div className="flex items-center gap-4 flex-wrap">
+                        {/* Store Toggle */}
+                        <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all ${isStoreOpen
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-red-50 border-red-200'
+                            }`}>
+                            <div className={`size-2.5 rounded-full ${isStoreOpen ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                            <span className={`text-sm font-bold ${isStoreOpen ? 'text-green-700' : 'text-red-700'}`}>
+                                {isStoreOpen ? 'Toko Buka' : 'Toko Tutup'}
+                            </span>
+                            <label className="toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    checked={isStoreOpen}
+                                    onChange={toggleStore}
+                                />
+                                <span className="toggle-slider" />
+                            </label>
+                        </div>
                     </div>
                 </div>
 

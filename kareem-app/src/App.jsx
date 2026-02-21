@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext'
 import { OrdersProvider } from './context/OrdersContext'
 import { CategoriesProvider } from './context/CategoriesContext'
 import { ProductsProvider } from './context/ProductsContext'
+import { StoreStatusProvider } from './context/StoreStatusContext'
 import Navbar from './components/Navbar'
 import CartDrawer from './components/CartDrawer'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -82,7 +83,9 @@ export default function App() {
                     <ProductsProvider>
                         <CategoriesProvider>
                             <CartProvider>
-                                <AppContent />
+                                <StoreStatusProvider>
+                                    <AppContent />
+                                </StoreStatusProvider>
                             </CartProvider>
                         </CategoriesProvider>
                     </ProductsProvider>

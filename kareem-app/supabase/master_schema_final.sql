@@ -15,6 +15,10 @@
 -- 1. ENUMS & UTILITIES
 -- ============================================================================
 
+-- Cleanup potential problematic auth triggers (to prevent "database error saving new user")
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();
+
 -- auto-timezone for consistency
 ALTER DATABASE postgres SET timezone TO 'Asia/Jakarta';
 
@@ -89,6 +93,7 @@ CREATE TABLE IF NOT EXISTS public.order_items (
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON public.order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON public.order_items(product_id);
 
@@ -350,11 +355,39 @@ CREATE POLICY "Public Access Proofs" ON storage.objects FOR SELECT USING ( bucke
 CREATE POLICY "Public Upload Proofs" ON storage.objects FOR INSERT WITH CHECK ( bucket_id = 'payment-proofs' );
 
 -- ============================================================================
--- 9. REALTIME CONFIGURATION
+-- 9. STORE SETTINGS (Open/Close Toggle)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.store_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    is_open BOOLEAN NOT NULL DEFAULT true,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT single_row CHECK (id = 1)
+);
+
+ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public Read Store Status" ON public.store_settings;
+DROP POLICY IF EXISTS "Admin Update Store Status" ON public.store_settings;
+
+CREATE POLICY "Public Read Store Status" ON public.store_settings
+    FOR SELECT USING (true);
+
+CREATE POLICY "Admin Update Store Status" ON public.store_settings
+    FOR UPDATE USING (auth.jwt() ->> 'email' = 'admin@kareeemjuice.com');
+
+-- Insert initial row
+INSERT INTO public.store_settings (id, is_open)
+VALUES (1, true)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- 10. REALTIME CONFIGURATION
 -- ============================================================================
 
 -- Enable Realtime for Orders (Critical for Notifications)
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE store_settings;
 
 -- ============================================================================
 -- DONE

@@ -41,10 +41,16 @@ export function OrdersProvider({ children }) {
         let fetchError = null
 
         try {
+            // Only fetch orders from the last 7 days to avoid timeout
+            const sevenDaysAgo = new Date()
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
             const { data, error } = await supabase
                 .from('orders')
                 .select('*')
+                .gte('created_at', sevenDaysAgo.toISOString())
                 .order('created_at', { ascending: false })
+                .limit(100)
 
             if (error) throw error
             supabaseData = data || []

@@ -182,3 +182,38 @@ body {
     color: white;
     border-color: #ff8c00;
 }
+
+/* ============================================
+   Print Styles — 56mm Thermal Receipt
+   ============================================ */
+@media print {
+
+    /* Hide everything */
+    body * {
+        visibility: hidden;
+    }
+
+    /* Show only receipt */
+    #print-receipt,
+    #print-receipt * {
+        visibility: visible;
+    }
+
+    #print-receipt {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 56mm;
+        padding: 4mm;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 12px;
+        line-height: 1.4;
+        color: #000;
+        background: #fff;
+    }
+
+    @page {
+        size: 56mm auto;
+        margin: 0;
+    }
+}

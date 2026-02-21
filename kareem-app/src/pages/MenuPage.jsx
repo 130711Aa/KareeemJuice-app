@@ -3,12 +3,14 @@ import ProductCard from '../components/ProductCard'
 import { useCategories } from '../context/CategoriesContext'
 import { useProducts } from '../context/ProductsContext'
 import { useCart } from '../context/CartContext'
+import { useStoreStatus } from '../context/StoreStatusContext'
 import { formatRupiah } from '../lib/utils'
 
 export default function MenuPage() {
     const { filterCategories } = useCategories()
     const { availableProducts } = useProducts()
     const { totalItems, totalPrice, setIsOpen } = useCart()
+    const { isStoreOpen } = useStoreStatus()
     const [selectedCategory, setSelectedCategory] = useState('Semua')
     const [searchQuery, setSearchQuery] = useState('')
 
@@ -52,6 +54,19 @@ export default function MenuPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Store Closed Banner */}
+            {!isStoreOpen && (
+                <div className="mx-4 md:mx-8 mt-3">
+                    <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 flex items-center gap-3">
+                        <span className="material-symbols-outlined text-red-500 text-2xl">store</span>
+                        <div>
+                            <p className="text-sm font-bold text-red-700">Toko sedang tutup</p>
+                            <p className="text-xs text-red-500">Pesanan tidak dapat dilakukan saat ini. Silakan kembali nanti.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-4 md:py-8 pb-28 md:pb-8">
                 {/* Search */}
@@ -120,16 +135,24 @@ export default function MenuPage() {
             {totalItems > 0 && (
                 <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 px-4 pb-4 pt-2 bg-gradient-to-t from-[#faf8f5] via-[#faf8f5] to-transparent">
                     <button
-                        onClick={() => setIsOpen(true)}
-                        className="w-full bg-[#ff8c00] text-white rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-xl shadow-[#ff8c00]/30 active:scale-[0.98] transition-transform"
+                        onClick={() => isStoreOpen && setIsOpen(true)}
+                        disabled={!isStoreOpen}
+                        className={`w-full rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-xl active:scale-[0.98] transition-transform ${isStoreOpen
+                                ? 'bg-[#ff8c00] text-white shadow-[#ff8c00]/30'
+                                : 'bg-neutral-300 text-neutral-500 shadow-neutral-200 cursor-not-allowed'
+                            }`}
                     >
                         <div className="flex items-center gap-3">
-                            <div className="size-10 bg-white/20 rounded-xl flex items-center justify-center">
-                                <span className="material-symbols-outlined">shopping_bag</span>
+                            <div className={`size-10 rounded-xl flex items-center justify-center ${isStoreOpen ? 'bg-white/20' : 'bg-white/30'}`}>
+                                <span className="material-symbols-outlined">{isStoreOpen ? 'shopping_bag' : 'block'}</span>
                             </div>
                             <div className="text-left">
-                                <p className="text-xs text-white/70 font-medium">{totalItems} item</p>
-                                <p className="text-[10px] text-white/50 uppercase tracking-wider font-semibold">Lihat Keranjang</p>
+                                <p className="text-xs font-medium" style={{ opacity: 0.7 }}>
+                                    {isStoreOpen ? `${totalItems} item` : 'Toko Tutup'}
+                                </p>
+                                <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ opacity: 0.5 }}>
+                                    {isStoreOpen ? 'Lihat Keranjang' : 'Tidak bisa pesan'}
+                                </p>
                             </div>
                         </div>
                         <span className="text-lg font-black">{formatRupiah(totalPrice)}</span>
