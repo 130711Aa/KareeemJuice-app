@@ -16,7 +16,7 @@ export default function CheckoutModal({ onClose, onSuccess }) {
     const { items, totalPrice, clearCart } = useCart()
     const { addOrder } = useOrders()
     const { user } = useAuth()
-    const { isOpen: storeIsOpen } = useStoreStatus()
+    const { isStoreOpen } = useStoreStatus()
     const [form, setForm] = useState({
         name: user?.user_metadata?.name || '',
         phone: user?.user_metadata?.phone || '',
@@ -89,7 +89,7 @@ export default function CheckoutModal({ onClose, onSuccess }) {
             return
         }
 
-        if (!storeIsOpen) {
+        if (!isStoreOpen) {
             toast.error('Maaf, toko sedang tutup!')
             return
         }
@@ -351,7 +351,7 @@ export default function CheckoutModal({ onClose, onSuccess }) {
 
                     <button
                         type="submit"
-                        disabled={loading || !storeIsOpen}
+                        disabled={loading || !isStoreOpen}
                         className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98]"
                     >
                         {loading ? (
