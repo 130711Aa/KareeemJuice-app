@@ -127,6 +127,13 @@ function AdminNavbar() {
                                 </Link>
                             )
                         })}
+                        <button
+                            onClick={() => { sessionStorage.setItem('pos_mode', 'true'); navigate('/pos') }}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#ff8c00] to-[#ff6b00] text-white text-sm font-bold shadow-lg shadow-[#ff8c00]/20 hover:shadow-[#ff8c00]/40 transition-all active:scale-95"
+                        >
+                            <span className="material-symbols-outlined text-base">point_of_sale</span>
+                            Mode Kasir
+                        </button>
                         <Link
                             to="/"
                             className="text-sm font-medium leading-normal text-[#181510]/60 hover:text-[#ff8c00] transition-colors"
@@ -187,6 +194,16 @@ function AdminNavbar() {
                         )
                     })}
                     <div className="h-px bg-neutral-100 my-1" />
+                    <button
+                        onClick={() => { setIsMobileMenuOpen(false); sessionStorage.setItem('pos_mode', 'true'); navigate('/pos') }}
+                        className="flex items-center justify-between w-full p-3 rounded-xl bg-gradient-to-r from-[#ff8c00] to-[#ff6b00] text-white font-bold transition-all active:scale-[0.98]"
+                    >
+                        <span className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-lg">point_of_sale</span>
+                            Mode Kasir
+                        </span>
+                        <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                    </button>
                     <Link
                         to="/"
                         onClick={() => setIsMobileMenuOpen(false)}

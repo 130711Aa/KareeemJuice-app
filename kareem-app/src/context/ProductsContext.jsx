@@ -17,14 +17,28 @@ export function ProductsProvider({ children }) {
     })
     const [loading, setLoading] = useState(false)
 
+    // Retry protection
+    const productsCooldownRef = { current: false }
+
     // Fetch products from Supabase
     const fetchProducts = useCallback(async () => {
+        if (productsCooldownRef.current) {
+            console.warn('Fetch products skipped — cooldown active')
+            return
+        }
+
         setLoading(true)
         try {
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 10000)
+
             const { data, error } = await supabase
                 .from('products')
-                .select('*')
+                .select('id,name,description,price,category,stock_status,image_url')
                 .order('id', { ascending: true })
+                .abortSignal(controller.signal)
+
+            clearTimeout(timeoutId)
 
             if (error) throw error
 
@@ -38,6 +52,9 @@ export function ProductsProvider({ children }) {
             }
         } catch (err) {
             console.error('Error fetching products:', err)
+            // Activate cooldown for 10 seconds
+            productsCooldownRef.current = true
+            setTimeout(() => { productsCooldownRef.current = false }, 10000)
             // We already have fallback data in state, so just log error
         } finally {
             setLoading(false)

@@ -11,6 +11,9 @@ export default function CustomerOrdersPage() {
     const { user } = useAuth()
     const [printOrder, setPrintOrder] = useState(null)
 
+    // Only show orders belonging to the logged-in customer
+    const myOrders = orders.filter(o => o.user_id === user?.id)
+
     const handleDelete = async (order) => {
         if (!window.confirm(`Batalkan pesanan #${order.order_number || order.id}?\n\nPesanan yang dibatalkan tidak bisa dikembalikan.`)) return
         try {
@@ -29,7 +32,7 @@ export default function CustomerOrdersPage() {
         )
     }
 
-    if (orders.length === 0) {
+    if (myOrders.length === 0) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-[#faf8f5] px-4">
                 <div className="size-20 bg-[#ff8c00]/10 rounded-full flex items-center justify-center mb-6">
@@ -46,6 +49,26 @@ export default function CustomerOrdersPage() {
         )
     }
 
+    // Queue progress message helper (UI-only calculation)
+    const getQueueMessage = (order) => {
+        if (order.status === 'completed') return { text: 'Pesanan selesai', icon: 'check_circle', color: 'text-green-600', bg: 'bg-green-50 border-green-100' }
+        if (order.status === 'cancelled') return null
+        if (order.status === 'processing') return { text: 'Pesananmu sedang diproses', icon: 'autorenew', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' }
+
+        // For pending/ready: count how many active orders are ahead in today's queue
+        const today = new Date().toDateString()
+        const aheadCount = orders.filter(o => {
+            const sameDay = new Date(o.created_at).toDateString() === today
+            const isAhead = new Date(o.created_at) < new Date(order.created_at)
+            const isActive = o.status !== 'completed' && o.status !== 'cancelled'
+            const isDifferent = o.id !== order.id
+            return sameDay && isAhead && isActive && isDifferent
+        }).length
+
+        if (aheadCount > 0) return { text: `Menunggu ${aheadCount} antrian lagi`, icon: 'hourglass_top', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' }
+        return { text: 'Pesananmu berikutnya diproses', icon: 'rocket_launch', color: 'text-[#ff8c00]', bg: 'bg-[#ff8c00]/5 border-[#ff8c00]/10' }
+    }
+
     return (
         <div className="min-h-screen bg-[#faf8f5] pb-20">
             {/* Header */}
@@ -59,88 +82,100 @@ export default function CustomerOrdersPage() {
             </div>
 
             <div className="max-w-md mx-auto px-4 py-6 space-y-4">
-                {orders.map(order => (
-                    <div key={order.id} className="bg-white rounded-2xl p-5 border border-[#ff8c00]/10 shadow-sm">
-                        <div className="flex justify-between items-start mb-4">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${order.status === 'completed' ? 'bg-green-50 text-green-600 border-green-200' :
-                                        order.status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-200' :
-                                            'bg-blue-50 text-blue-600 border-blue-200'
-                                        }`}>
-                                        {order.status === 'pending' ? 'Menunggu' :
-                                            order.status === 'processing' ? 'Diproses' :
-                                                order.status === 'ready' ? 'Siap Diambil' :
-                                                    order.status === 'completed' ? 'Selesai' :
-                                                        order.status === 'cancelled' ? 'Dibatalkan' : order.status}
-                                    </span>
-                                    <span className="text-xs text-neutral-400">
-                                        {new Date(order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                    </span>
+                {myOrders.map(order => {
+                    const queueMsg = getQueueMessage(order)
+                    return (
+                        <div key={order.id} className="bg-white rounded-2xl p-5 border border-[#ff8c00]/10 shadow-sm">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${order.status === 'completed' ? 'bg-green-50 text-green-600 border-green-200' :
+                                            order.status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-200' :
+                                                'bg-blue-50 text-blue-600 border-blue-200'
+                                            }`}>
+                                            {order.status === 'pending' ? 'Menunggu' :
+                                                order.status === 'processing' ? 'Diproses' :
+                                                    order.status === 'ready' ? 'Siap Diambil' :
+                                                        order.status === 'completed' ? 'Selesai' :
+                                                            order.status === 'cancelled' ? 'Dibatalkan' : order.status}
+                                        </span>
+                                        <span className="text-xs text-neutral-400">
+                                            {new Date(order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                    <h3 className="font-bold text-neutral-800">Order #{order.order_number || order.id.toString().slice(-4)}</h3>
                                 </div>
-                                <h3 className="font-bold text-neutral-800">Order #{order.order_number || order.id.toString().slice(-4)}</h3>
+                                <span className="font-bold text-[#ff8c00]">{formatRupiah(order.total_amount)}</span>
                             </div>
-                            <span className="font-bold text-[#ff8c00]">{formatRupiah(order.total_amount)}</span>
+
+                            {/* Queue Progress Message */}
+                            {queueMsg && (
+                                <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-semibold mb-4 ${queueMsg.bg}`}>
+                                    <span className={`material-symbols-outlined text-base ${queueMsg.color}`}>{queueMsg.icon}</span>
+                                    <span className={queueMsg.color}>{queueMsg.text}</span>
+                                </div>
+                            )}
+
+                            <div className="space-y-2 mb-4">
+                                {order.items && order.items.length > 0 ? (
+                                    <div className="bg-neutral-50 rounded-xl p-3 space-y-2">
+                                        {order.items.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between items-center text-sm">
+                                                <span className="text-neutral-700">
+                                                    {item.name} <span className="text-neutral-400">x{item.quantity}</span>
+                                                </span>
+                                                <span className="font-semibold text-neutral-800">{formatRupiah((item.price || 0) * (item.quantity || 1))}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-3 bg-neutral-50 rounded-xl text-sm text-neutral-500 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-neutral-400">info</span>
+                                        <span>Detail item tidak tersedia</span>
+                                    </div>
+                                )}
+                                {order.notes && (
+                                    <div className="text-xs text-neutral-500 italic bg-yellow-50 p-2 rounded-lg border border-yellow-100">
+                                        Catatan: "{order.notes}"
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-2 flex-wrap">
+                                {/* Batalkan Pesanan — only for pending orders */}
+                                {order.status === 'pending' && (
+                                    <button
+                                        onClick={() => handleDelete(order)}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-500 border border-red-100 rounded-xl text-sm font-bold hover:bg-red-100 transition-colors"
+                                    >
+                                        <span className="material-symbols-outlined text-lg">cancel</span>
+                                        Batalkan Pesanan
+                                    </button>
+                                )}
+
+                                {/* Print Nota — only for completed orders */}
+                                {order.status === 'completed' && (
+                                    <button
+                                        onClick={() => setPrintOrder(order)}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-green-50 text-green-600 border border-green-100 rounded-xl text-sm font-bold hover:bg-green-100 transition-colors"
+                                    >
+                                        <span className="material-symbols-outlined text-lg">print</span>
+                                        Print Nota
+                                    </button>
+                                )}
+
+                                {order.payment_method === 'cashless' && order.payment_proof_path && (
+                                    <div className="flex items-center gap-1 text-xs text-blue-600">
+                                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                                        Bukti Bayar Terupload
+                                    </div>
+                                )}
+                            </div>
                         </div>
+                    )
+                })}
 
-                        <div className="space-y-2 mb-4">
-                            {order.items && order.items.length > 0 ? (
-                                <div className="bg-neutral-50 rounded-xl p-3 space-y-2">
-                                    {order.items.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between items-center text-sm">
-                                            <span className="text-neutral-700">
-                                                {item.name} <span className="text-neutral-400">x{item.quantity}</span>
-                                            </span>
-                                            <span className="font-semibold text-neutral-800">{formatRupiah((item.price || 0) * (item.quantity || 1))}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="p-3 bg-neutral-50 rounded-xl text-sm text-neutral-500 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-neutral-400">info</span>
-                                    <span>Detail item tidak tersedia</span>
-                                </div>
-                            )}
-                            {order.notes && (
-                                <div className="text-xs text-neutral-500 italic bg-yellow-50 p-2 rounded-lg border border-yellow-100">
-                                    Catatan: "{order.notes}"
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 flex-wrap">
-                            {/* Batalkan Pesanan — only for pending orders */}
-                            {order.status === 'pending' && (
-                                <button
-                                    onClick={() => handleDelete(order)}
-                                    className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-500 border border-red-100 rounded-xl text-sm font-bold hover:bg-red-100 transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-lg">cancel</span>
-                                    Batalkan Pesanan
-                                </button>
-                            )}
-
-                            {/* Print Nota — only for completed orders */}
-                            {order.status === 'completed' && (
-                                <button
-                                    onClick={() => setPrintOrder(order)}
-                                    className="flex items-center gap-1.5 px-4 py-2 bg-green-50 text-green-600 border border-green-100 rounded-xl text-sm font-bold hover:bg-green-100 transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-lg">print</span>
-                                    Print Nota
-                                </button>
-                            )}
-
-                            {order.payment_method === 'cashless' && order.payment_proof_path && (
-                                <div className="flex items-center gap-1 text-xs text-blue-600">
-                                    <span className="material-symbols-outlined text-sm">check_circle</span>
-                                    Bukti Bayar Terupload
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ))}
             </div>
 
             {/* Print Nota Modal */}

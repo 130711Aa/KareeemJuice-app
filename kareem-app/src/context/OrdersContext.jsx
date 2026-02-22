@@ -36,27 +36,47 @@ export function OrdersProvider({ children }) {
         }
     }, [orders, loading])
 
+    // Retry protection: prevent rapid cascade retries
+    const fetchCooldownRef = { current: false }
+
     const fetchOrders = async () => {
+        // Prevent cascade retries
+        if (fetchCooldownRef.current) {
+            console.warn('Fetch orders skipped — cooldown active')
+            setLoading(false)
+            return
+        }
+
         let supabaseData = []
         let fetchError = null
 
         try {
-            // Only fetch orders from the last 7 days to avoid timeout
-            const sevenDaysAgo = new Date()
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+            // Only fetch today's orders to keep query fast
+            const today = new Date()
+            today.setHours(0, 0, 0, 0)
+
+            // AbortController with 15s timeout to prevent hanging
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 15000)
 
             const { data, error } = await supabase
                 .from('orders')
-                .select('*')
-                .gte('created_at', sevenDaysAgo.toISOString())
+                .select('id,order_number,customer_name,customer_phone,customer_address,notes,total_amount,payment_method,items,status,created_at,user_id')
+                .gte('created_at', today.toISOString())
                 .order('created_at', { ascending: false })
-                .limit(100)
+                .limit(50)
+                .abortSignal(controller.signal)
+
+            clearTimeout(timeoutId)
 
             if (error) throw error
             supabaseData = data || []
         } catch (err) {
             console.error('Error fetching orders from Supabase:', err)
             fetchError = err
+            // Activate cooldown for 10 seconds to prevent rapid retries
+            fetchCooldownRef.current = true
+            setTimeout(() => { fetchCooldownRef.current = false }, 10000)
         }
 
         try {
@@ -195,12 +215,15 @@ export function OrdersProvider({ children }) {
                         if (!error && newOrder) {
                             setOrders(prev => {
                                 if (prev.some(o => o.id === newOrder.id)) return prev
-                                // Toast for new order (likely for Admin/Kitchen view)
-                                toast.success(`Pesanan Baru Masuk! #${newOrder.order_number}`, {
-                                    icon: '🔔',
-                                    position: 'top-right',
-                                    duration: 4000
-                                })
+                                // Toast only on admin/POS pages (not on customer pages)
+                                const isAdminOrPOS = window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/pos')
+                                if (isAdminOrPOS) {
+                                    toast.success(`Pesanan Baru Masuk! #${newOrder.order_number}`, {
+                                        icon: '🔔',
+                                        position: 'top-right',
+                                        duration: 4000
+                                    })
+                                }
                                 const updated = [newOrder, ...prev]
                                 updated.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
                                 return updated
@@ -209,13 +232,12 @@ export function OrdersProvider({ children }) {
                     } else if (payload.eventType === 'UPDATE') {
                         setOrders(prev => prev.map(order => {
                             if (order.id === payload.new.id) {
-                                // Toast for order update (Customer view)
-                                if (order.status !== payload.new.status) {
+                                // Toast only for the customer's own orders
+                                if (order.status !== payload.new.status && order.user_id === user?.id) {
                                     const emoji = payload.new.status === 'completed' ? '✅' :
                                         payload.new.status === 'processing' ? '👨‍🍳' :
                                             payload.new.status === 'cancelled' ? '❌' : 'ℹ️';
 
-                                    // Notification for customer: "Status pesanan Anda updated!"
                                     toast(`Status Pesanan #${order.order_number} Update: ${payload.new.status}`, {
                                         icon: emoji,
                                         position: 'top-center'
@@ -227,7 +249,6 @@ export function OrdersProvider({ children }) {
                         }))
                     } else if (payload.eventType === 'DELETE') {
                         setOrders(prev => prev.filter(order => order.id !== payload.old.id))
-                        toast('Pesanan dihapus', { icon: '🗑️' })
                     }
                 }
             )
@@ -236,7 +257,7 @@ export function OrdersProvider({ children }) {
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [])
+    }, [user])
 
     const clearAllOrders = useCallback(async () => {
         setOrders([])

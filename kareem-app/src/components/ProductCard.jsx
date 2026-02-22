@@ -21,13 +21,13 @@ export default function ProductCard({ product, index }) {
 
     return (
         <div
-            className="bg-white rounded-2xl border border-[#ff8c00]/8 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group animate-fade-in-up"
+            className="bg-white rounded-2xl border border-[#ff8c00]/8 shadow-sm active:scale-[0.97] transition-all duration-300 overflow-hidden group animate-fade-in-up"
             style={{ animationDelay: `${index * 60}ms` }}
         >
             {/* Image */}
             <div className="relative overflow-hidden">
                 <div
-                    className="h-36 sm:h-44 lg:h-48 bg-center bg-cover transition-transform duration-500 group-hover:scale-110"
+                    className="h-36 sm:h-44 lg:h-48 bg-center bg-cover transition-transform duration-500"
                     style={{ backgroundImage: `url("${product.image_url}")` }}
                 />
                 {/* Category badge — hidden on mobile for cleaner look */}
