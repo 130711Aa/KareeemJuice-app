@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useOrders } from '../context/OrdersContext'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { formatRupiah } from '../lib/utils'
 import { Link } from 'react-router-dom'
 import PrintNota from '../components/PrintNota'
@@ -10,9 +11,43 @@ export default function CustomerOrdersPage() {
     const { orders, loading, deleteOrder } = useOrders()
     const { user } = useAuth()
     const [printOrder, setPrintOrder] = useState(null)
+    const [queuePositions, setQueuePositions] = useState({}) // { orderId: number }
 
     // Only show orders belonging to the logged-in customer
     const myOrders = orders.filter(o => o.user_id === user?.id)
+
+    // Fetch queue positions for all pending orders
+    const fetchQueuePositions = useCallback(async () => {
+        const pendingOrders = myOrders.filter(o => o.status === 'pending' && !o._offline)
+        if (pendingOrders.length === 0) {
+            setQueuePositions({})
+            return
+        }
+
+        const positions = {}
+        await Promise.all(
+            pendingOrders.map(async (order) => {
+                try {
+                    const { data, error } = await supabase.rpc('get_queue_position', {
+                        target_order_id: order.id
+                    })
+                    if (!error && data !== null) {
+                        positions[order.id] = data
+                    }
+                } catch (err) {
+                    console.warn('Failed to fetch queue position for', order.id, err)
+                }
+            })
+        )
+        setQueuePositions(positions)
+    }, [orders, user])
+
+    // Re-fetch queue positions whenever orders change (realtime updates included)
+    useEffect(() => {
+        if (!loading && user) {
+            fetchQueuePositions()
+        }
+    }, [orders, loading, user])
 
     const handleDelete = async (order) => {
         if (!window.confirm(`Batalkan pesanan #${order.order_number || order.id}?\n\nPesanan yang dibatalkan tidak bisa dikembalikan.`)) return
@@ -49,11 +84,11 @@ export default function CustomerOrdersPage() {
         )
     }
 
-    // Status message helper — explicit per status (queue counting doesn't work for customers due to RLS filtering)
+    // Status message helper — uses queue position data for pending orders
     const getQueueMessage = (order) => {
         switch (order.status) {
             case 'completed':
-                return { text: 'Pesanan selesai', icon: 'check_circle', color: 'text-green-600', bg: 'bg-green-50 border-green-100' }
+                return { text: 'Pesanan selesai ✅', icon: 'check_circle', color: 'text-green-600', bg: 'bg-green-50 border-green-100' }
             case 'cancelled':
                 return null
             case 'processing':
@@ -61,8 +96,22 @@ export default function CustomerOrdersPage() {
             case 'ready':
                 return { text: 'Pesanan siap diambil! 🎉', icon: 'takeout_dining', color: 'text-green-600', bg: 'bg-green-50 border-green-100' }
             case 'pending':
-            default:
-                return { text: 'Menunggu diproses', icon: 'hourglass_top', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' }
+            default: {
+                const pos = queuePositions[order.id]
+                if (pos === undefined) {
+                    // Still loading or RPC not available
+                    return { text: 'Menunggu diproses ⏳', icon: 'hourglass_top', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' }
+                }
+                if (pos === 0) {
+                    return { text: 'Menunggu diproses ⏳', icon: 'hourglass_top', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' }
+                }
+                return {
+                    text: `Menunggu ${pos} pesanan lagi 🕐`,
+                    icon: 'queue',
+                    color: 'text-amber-600',
+                    bg: 'bg-amber-50 border-amber-100'
+                }
+            }
         }
     }
 
