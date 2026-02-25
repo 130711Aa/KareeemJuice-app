@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
 
         // Listen for changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            console.log("Global Auth Event:", event)
+            if (import.meta.env.DEV) console.log("Global Auth Event:", event)
 
             if (event === 'PASSWORD_RECOVERY') {
                 setIsRecovering(true)
@@ -49,17 +49,24 @@ export function AuthProvider({ children }) {
         return () => subscription.unsubscribe()
     }, [])
 
-    const checkAdmin = (user) => {
-        // For now, simpler check. You can replace this with a proper role check in DB
-        // or just rely on RLS. Ideally, we use Supabase Custom Claims or a 'role' column.
-        // Preserving the previous hardcoded logic is tricky without the password.
-        // Moving forward: Authenticated users are just users.
-        // 'Admin' status might be needed for UI logic (showing admin dashboard link).
-        // Let's assume a specific email is admin for UI purposes, or ANY logged in user for now.
-        // IMPROVEMENT: You should ideally have a 'roles' table or column.
-        if (user?.email === 'admin@kareeemjuice.com') {
-            setIsAdmin(true)
-        } else {
+    const checkAdmin = async (user) => {
+        if (!user) {
+            setIsAdmin(false)
+            return
+        }
+        try {
+            const { data, error } = await supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', user.id)
+                .eq('role', 'admin')
+                .maybeSingle()
+
+            if (error) throw error
+            setIsAdmin(!!data)
+        } catch (err) {
+            console.error('Error checking admin role:', err)
+            // Fallback: deny admin access on error
             setIsAdmin(false)
         }
     }

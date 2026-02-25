@@ -10,21 +10,30 @@ import { StoreStatusProvider } from './context/StoreStatusContext'
 import Navbar from './components/Navbar'
 import CartDrawer from './components/CartDrawer'
 import ProtectedRoute from './components/ProtectedRoute'
+import ErrorBoundary from './components/ErrorBoundary'
 import AuthPage from './pages/AuthPage'
 import CustomerOrdersPage from './pages/CustomerOrdersPage'
 import ProfilePage from './pages/ProfilePage'
 import MenuPage from './pages/MenuPage'
-import AdminDashboard from './pages/AdminDashboard'
-import MenuManagement from './pages/MenuManagement'
 
-import OrdersPage from './pages/OrdersPage'
-import CategoriesPage from './pages/CategoriesPage'
-import HistoryPage from './pages/HistoryPage'
-import AnalyticsPage from './pages/AnalyticsPage'
-import InventoryPage from './pages/InventoryPage'
-
-// Lazy load POS page for code splitting
+// Lazy load admin & POS pages for code splitting
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
+const MenuManagement = lazy(() => import('./pages/MenuManagement'))
+const OrdersPage = lazy(() => import('./pages/OrdersPage'))
+const CategoriesPage = lazy(() => import('./pages/CategoriesPage'))
+const HistoryPage = lazy(() => import('./pages/HistoryPage'))
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'))
+const InventoryPage = lazy(() => import('./pages/InventoryPage'))
 const POSPage = lazy(() => import('./pages/POSPage'))
+
+const AdminLoadingFallback = () => (
+    <div className="min-h-screen flex items-center justify-center bg-[#fcfaf8]">
+        <div className="flex flex-col items-center gap-3">
+            <span className="animate-spin material-symbols-outlined text-[#ff8c00] text-4xl">progress_activity</span>
+            <p className="text-slate-400 text-sm font-medium">Memuat halaman...</p>
+        </div>
+    </div>
+)
 
 function AppContent() {
     const location = useLocation()
@@ -37,57 +46,50 @@ function AppContent() {
             {/* Don't show navbar on login page or POS mode */}
             {!isLoginPage && !isPOS && <Navbar />}
             <div className="flex-1">
-                <Routes>
-                    {/* Customer */}
-                    <Route path="/" element={<MenuPage />} />
-                    <Route path="/auth" element={<AuthPage />} />
-                    <Route path="/orders" element={<CustomerOrdersPage />} />
-                    <Route path="/profile" element={<ProfilePage />} />
+                <Suspense fallback={<AdminLoadingFallback />}>
+                    <Routes>
+                        {/* Customer */}
+                        <Route path="/" element={<MenuPage />} />
+                        <Route path="/auth" element={<AuthPage />} />
+                        <Route path="/orders" element={<CustomerOrdersPage />} />
+                        <Route path="/profile" element={<ProfilePage />} />
 
-                    {/* Admin Login (public) - now consolidated to /auth */}
-                    <Route path="/admin/analytics" element={<AnalyticsPage />} />
+                        {/* Admin (all protected) */}
+                        <Route path="/admin/analytics" element={
+                            <ProtectedRoute><AnalyticsPage /></ProtectedRoute>
+                        } />
+                        <Route path="/admin" element={
+                            <ProtectedRoute><AdminDashboard /></ProtectedRoute>
+                        } />
+                        <Route path="/admin/orders" element={
+                            <ProtectedRoute><OrdersPage /></ProtectedRoute>
+                        } />
+                        <Route path="/admin/menu" element={
+                            <ProtectedRoute><MenuManagement /></ProtectedRoute>
+                        } />
+                        <Route path="/admin/history" element={
+                            <ProtectedRoute><HistoryPage /></ProtectedRoute>
+                        } />
+                        <Route path="/admin/categories" element={
+                            <ProtectedRoute><CategoriesPage /></ProtectedRoute>
+                        } />
+                        <Route path="/admin/inventory" element={
+                            <ProtectedRoute><InventoryPage /></ProtectedRoute>
+                        } />
+                        {/* Redirect legacy admin login */}
+                        <Route path="/admin/login" element={<Navigate to="/auth" replace />} />
 
-                    {/* Admin (protected) */}
-                    <Route path="/admin" element={
-                        <ProtectedRoute><AdminDashboard /></ProtectedRoute>
-                    } />
-                    <Route path="/admin/orders" element={
-                        <ProtectedRoute><OrdersPage /></ProtectedRoute>
-                    } />
-                    <Route path="/admin/menu" element={
-                        <ProtectedRoute><MenuManagement /></ProtectedRoute>
-                    } />
-                    <Route path="/admin/history" element={
-                        <ProtectedRoute><HistoryPage /></ProtectedRoute>
-                    } />
-                    <Route path="/admin/categories" element={
-                        <ProtectedRoute><CategoriesPage /></ProtectedRoute>
-                    } />
-                    <Route path="/admin/inventory" element={
-                        <ProtectedRoute><InventoryPage /></ProtectedRoute>
-                    } />
-                    {/* Redirect legacy admin login */}
-                    <Route path="/admin/login" element={<Navigate to="/auth" replace />} />
-
-                    {/* POS Cashier Mode (protected, lazy-loaded) */}
-                    <Route path="/pos" element={
-                        <ProtectedRoute>
-                            <Suspense fallback={
-                                <div className="fixed inset-0 bg-[#0f0f1a] flex items-center justify-center z-50">
-                                    <div className="flex flex-col items-center gap-3">
-                                        <span className="animate-spin material-symbols-outlined text-[#ff8c00] text-4xl">progress_activity</span>
-                                        <p className="text-white/50 text-sm font-medium">Memuat Mode Kasir...</p>
-                                    </div>
-                                </div>
-                            }>
+                        {/* POS Cashier Mode (protected, lazy-loaded) */}
+                        <Route path="/pos" element={
+                            <ProtectedRoute>
                                 <POSPage />
-                            </Suspense>
-                        </ProtectedRoute>
-                    } />
+                            </ProtectedRoute>
+                        } />
 
-                    {/* Catch all */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                        {/* Catch all */}
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                </Suspense>
             </div>
             {/* Cart drawer only for customer pages (hide on admin & POS) */}
             {!isAdmin && !isPOS && <CartDrawer />}
@@ -99,19 +101,22 @@ function AppContent() {
 export default function App() {
     return (
         <BrowserRouter>
-            <AuthProvider>
-                <OrdersProvider>
-                    <ProductsProvider>
-                        <CategoriesProvider>
-                            <CartProvider>
-                                <StoreStatusProvider>
-                                    <AppContent />
-                                </StoreStatusProvider>
-                            </CartProvider>
-                        </CategoriesProvider>
-                    </ProductsProvider>
-                </OrdersProvider>
-            </AuthProvider>
+            <ErrorBoundary>
+                <AuthProvider>
+                    <OrdersProvider>
+                        <ProductsProvider>
+                            <CategoriesProvider>
+                                <CartProvider>
+                                    <StoreStatusProvider>
+                                        <AppContent />
+                                    </StoreStatusProvider>
+                                </CartProvider>
+                            </CategoriesProvider>
+                        </ProductsProvider>
+                    </OrdersProvider>
+                </AuthProvider>
+            </ErrorBoundary>
         </BrowserRouter>
     )
 }
+

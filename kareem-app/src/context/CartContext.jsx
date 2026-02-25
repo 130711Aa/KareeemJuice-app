@@ -1,10 +1,26 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 
 const CartContext = createContext()
 
 export function CartProvider({ children }) {
-    const [items, setItems] = useState([])
+    const [items, setItems] = useState(() => {
+        try {
+            const stored = localStorage.getItem('kareeem_cart')
+            return stored ? JSON.parse(stored) : []
+        } catch {
+            return []
+        }
+    })
     const [isOpen, setIsOpen] = useState(false)
+
+    // Persist cart to localStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem('kareeem_cart', JSON.stringify(items))
+        } catch {
+            // Quota exceeded — not critical
+        }
+    }, [items])
 
     const addItem = useCallback((product) => {
         setItems(prev => {

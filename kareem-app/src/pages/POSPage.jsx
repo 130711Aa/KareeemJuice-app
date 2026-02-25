@@ -4,10 +4,9 @@ import { useProducts } from '../context/ProductsContext'
 import { useCategories } from '../context/CategoriesContext'
 import { useOrders } from '../context/OrdersContext'
 import { useAuth } from '../context/AuthContext'
+import { formatRupiah } from '../lib/utils'
 import POSLayout from '../components/pos/POSLayout'
 import toast from 'react-hot-toast'
-
-const formatRupiah = (n) => 'Rp ' + (n || 0).toLocaleString('id-ID')
 
 export default function POSPage() {
     // Persist POS session

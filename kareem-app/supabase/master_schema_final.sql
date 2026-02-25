@@ -275,10 +275,48 @@ FOR EACH ROW
 EXECUTE FUNCTION handle_new_order_inventory();
 
 -- ============================================================================
--- 7. ROW LEVEL SECURITY (RLS) & POLICIES
+-- 7. USER ROLES (Database-Driven Admin Management)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.user_roles (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('admin', 'customer')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON public.user_roles(user_id);
+
+-- Helper function: returns TRUE if the current logged-in user is an admin
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.user_roles
+        WHERE user_id = auth.uid() AND role = 'admin'
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- Seed: set admin@kareeemjuice.com as admin (safe to re-run)
+DO $$
+DECLARE
+    admin_uid UUID;
+BEGIN
+    SELECT id INTO admin_uid FROM auth.users WHERE email = 'admin@kareeemjuice.com' LIMIT 1;
+    IF admin_uid IS NOT NULL THEN
+        INSERT INTO public.user_roles (user_id, role) VALUES (admin_uid, 'admin')
+        ON CONFLICT (user_id) DO UPDATE SET role = 'admin';
+    END IF;
+END $$;
+
+-- ============================================================================
+-- 8. ROW LEVEL SECURITY (RLS) & POLICIES
 -- ============================================================================
 
 -- Enable RLS
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
@@ -296,6 +334,10 @@ BEGIN
         EXECUTE 'DROP POLICY IF EXISTS "' || r.policyname || '" ON public.' || r.tablename; 
     END LOOP; 
 END $$;
+
+-- User Roles: everyone can read own role, only admins can modify
+CREATE POLICY "Read Own Role" ON public.user_roles FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Admin Manage Roles" ON public.user_roles FOR ALL USING (public.is_admin());
 
 -- Create Permissive Policies (Adjust as needed for production)
 -- Categories & Products: Public Read, Admin Write (Simulated as public for now)
@@ -320,19 +362,19 @@ CREATE POLICY "Customer Delete Pending Orders" ON public.orders
 
 -- Admin: read all orders
 CREATE POLICY "Admin Read All Orders" ON public.orders
-    FOR SELECT USING (auth.jwt() ->> 'email' = 'admin@kareeemjuice.com');
+    FOR SELECT USING (public.is_admin());
 
 -- Admin: update order status
 CREATE POLICY "Admin Update Orders" ON public.orders
-    FOR UPDATE USING (auth.jwt() ->> 'email' = 'admin@kareeemjuice.com');
+    FOR UPDATE USING (public.is_admin());
 
--- Admin: insert orders (if needed)
+-- Admin: insert orders (POS orders)
 CREATE POLICY "Admin Insert Orders" ON public.orders
-    FOR INSERT WITH CHECK (auth.jwt() ->> 'email' = 'admin@kareeemjuice.com');
+    FOR INSERT WITH CHECK (public.is_admin());
 
 -- Admin: delete orders
 CREATE POLICY "Admin Delete Orders" ON public.orders
-    FOR DELETE USING (auth.jwt() ->> 'email' = 'admin@kareeemjuice.com');
+    FOR DELETE USING (public.is_admin());
 
 CREATE POLICY "Public Access Order Items" ON public.order_items FOR ALL USING (true);
 
@@ -382,7 +424,7 @@ CREATE POLICY "Public Read Store Status" ON public.store_settings
     FOR SELECT USING (true);
 
 CREATE POLICY "Admin Update Store Status" ON public.store_settings
-    FOR UPDATE USING (auth.jwt() ->> 'email' = 'admin@kareeemjuice.com');
+    FOR UPDATE USING (public.is_admin());
 
 -- Insert initial row
 INSERT INTO public.store_settings (id, is_open)

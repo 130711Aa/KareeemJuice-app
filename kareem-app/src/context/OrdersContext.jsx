@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
+import { generateOrderId } from '../lib/utils'
 import toast from 'react-hot-toast'
 
 const OrdersContext = createContext()
@@ -37,7 +38,7 @@ export function OrdersProvider({ children }) {
     }, [orders, loading])
 
     // Retry protection: prevent rapid cascade retries
-    const fetchCooldownRef = { current: false }
+    const fetchCooldownRef = useRef(false)
 
     const fetchOrders = async () => {
         // Prevent cascade retries
@@ -105,7 +106,7 @@ export function OrdersProvider({ children }) {
 
     const addOrder = useCallback(async (order) => {
         const orderData = {
-            order_number: `KJ-${String(Date.now()).slice(-4)}`,
+            order_number: generateOrderId(),
             customer_name: order.customer_name,
             customer_phone: order.customer_phone,
             customer_address: order.customer_address || '',
@@ -203,7 +204,7 @@ export function OrdersProvider({ children }) {
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'orders' },
                 async (payload) => {
-                    console.log('Real-time change received!', payload)
+                    if (import.meta.env.DEV) console.log('Real-time change received!', payload)
 
                     if (payload.eventType === 'INSERT') {
                         const { data: newOrder, error } = await supabase
@@ -260,6 +261,10 @@ export function OrdersProvider({ children }) {
     }, [user])
 
     const clearAllOrders = useCallback(async () => {
+        // Only clear today's orders for safety (not entire history)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
         setOrders([])
         localStorage.removeItem('kareeem_orders')
 
@@ -267,7 +272,7 @@ export function OrdersProvider({ children }) {
             const { error } = await supabase
                 .from('orders')
                 .delete()
-                .neq('id', 0)
+                .gte('created_at', today.toISOString())
 
             if (error) throw error
         } catch (err) {

@@ -23,7 +23,7 @@ export function CategoriesProvider({ children }) {
                 setCategories(data.map(c => c.name))
             } else {
                 // Table is empty, seed defaults automatically
-                console.log('Seeding default categories...')
+                if (import.meta.env.DEV) console.log('Seeding default categories...')
                 const { error: insertError } = await supabase
                     .from('categories')
                     .insert(DEFAULT_CATEGORIES.map(name => ({ name })))

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { sampleProducts as defaultProducts } from '../data/products'
 import { supabase } from '../lib/supabase'
 
@@ -18,7 +18,7 @@ export function ProductsProvider({ children }) {
     const [loading, setLoading] = useState(false)
 
     // Retry protection
-    const productsCooldownRef = { current: false }
+    const productsCooldownRef = useRef(false)
 
     // Fetch products from Supabase
     const fetchProducts = useCallback(async () => {
