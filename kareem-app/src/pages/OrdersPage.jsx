@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useOrders } from '../context/OrdersContext'
 import { useStoreStatus } from '../context/StoreStatusContext'
 import { formatRupiah } from '../lib/utils'
@@ -450,7 +451,7 @@ function PrintReceipt({ order, onDone }) {
         bold: { fontWeight: 'bold' },
     }
 
-    return (
+    return createPortal(
         <div id="print-receipt" style={S.wrap}>
             {/* Header */}
             <div style={{ ...S.center, marginBottom: '4px' }}>
@@ -499,6 +500,7 @@ function PrintReceipt({ order, onDone }) {
             <div style={{ ...S.center, fontSize: '10px', marginTop: '4px' }}>
                 Kareeem Juice 🍊
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }

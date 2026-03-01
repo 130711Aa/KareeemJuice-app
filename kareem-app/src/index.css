@@ -184,32 +184,36 @@ body {
 }
 
 /* ============================================
-   Print Styles — 56mm Thermal Receipt
+   Print Styles — 56mm Thermal Receipt (RawBT)
    ============================================ */
 @media print {
 
-    /* Hide everything */
-    body * {
-        visibility: hidden;
+    /* Hide everything — use display:none so elements
+       don't occupy space and create blank pages */
+    body > * {
+        display: none !important;
     }
 
-    /* Show only receipt */
-    #print-receipt,
-    #print-receipt * {
-        visibility: visible;
-    }
-
+    /* Show only the receipt */
     #print-receipt {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 56mm;
-        padding: 4mm;
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 12px;
-        line-height: 1.4;
-        color: #000;
-        background: #fff;
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 48mm !important;
+        padding: 2mm !important;
+        margin: 0 !important;
+        font-family: 'Courier New', Courier, monospace !important;
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+        color: #000 !important;
+        background: #fff !important;
+        z-index: 99999 !important;
+    }
+
+    #print-receipt * {
+        display: revert !important;
+        visibility: visible !important;
     }
 
     @page {
