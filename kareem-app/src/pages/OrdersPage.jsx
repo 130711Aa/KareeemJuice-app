@@ -441,9 +441,9 @@ function PrintReceipt({ order, onDone }) {
 
     const S = {
         wrap: {
-            position: 'fixed', top: 0, left: 0, zIndex: -1,
             fontFamily: "'Courier New', Courier, monospace",
             fontSize: '12px', lineHeight: 1.5, color: '#000',
+            background: '#fff',
         },
         dashed: { borderBottom: '1px dashed #000', margin: '5px 0' },
         center: { textAlign: 'center' },

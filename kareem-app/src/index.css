@@ -186,6 +186,14 @@ body {
 /* ============================================
    Print Styles — 56mm Thermal Receipt (RawBT)
    ============================================ */
+
+/* Hide receipt on screen */
+@media screen {
+    #print-receipt {
+        display: none !important;
+    }
+}
+
 @media print {
 
     /* Hide everything except the receipt */
@@ -193,12 +201,10 @@ body {
         display: none !important;
     }
 
-    /* Show only the receipt */
+    /* Show the receipt */
     #print-receipt {
         display: block !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
+        position: static !important;
         width: 48mm !important;
         padding: 2mm !important;
         margin: 0 !important;
@@ -207,11 +213,9 @@ body {
         line-height: 1.4 !important;
         color: #000 !important;
         background: #fff !important;
-        z-index: 99999 !important;
     }
 
     #print-receipt * {
-        display: revert !important;
         visibility: visible !important;
     }
 
