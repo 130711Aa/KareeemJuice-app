@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import { useOrders } from '../context/OrdersContext'
 import { useStoreStatus } from '../context/StoreStatusContext'
 import { formatRupiah } from '../lib/utils'
@@ -416,91 +415,115 @@ export default function OrdersPage() {
 }
 
 // ==========================================
+// ==========================================
 // Captain Order Print (56mm thermal / RawBT)
+// Uses iframe for reliable mobile printing
 // ==========================================
 function PrintReceipt({ order, onDone }) {
     const hasPrinted = useRef(false)
 
     useEffect(() => {
-        if (!hasPrinted.current) {
-            hasPrinted.current = true
-            setTimeout(() => {
-                window.print()
-                onDone()
-            }, 200)
+        if (hasPrinted.current) return
+        hasPrinted.current = true
+
+        const fmtDate = (iso) => {
+            const d = new Date(iso)
+            return d.toLocaleString('id-ID', {
+                day: 'numeric', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+            })
         }
-    }, [onDone])
 
-    const formatDate = (iso) => {
-        const d = new Date(iso)
-        return d.toLocaleString('id-ID', {
-            day: 'numeric', month: 'short', year: 'numeric',
-            hour: '2-digit', minute: '2-digit',
-        })
+        const fmtRupiah = (n) =>
+            new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
+
+        const itemsHTML = (order.items || []).map((item, i) =>
+            `<div style="display:flex;justify-content:space-between;margin-bottom:2px;font-size:12px;">
+                <span>${i + 1}. ${item.name} x${item.quantity}</span>
+                <span>${fmtRupiah(item.price * item.quantity)}</span>
+            </div>`
+        ).join('')
+
+        const notesHTML = order.notes
+            ? `<div style="border-bottom:1px dashed #000;margin:5px 0;"></div>
+               <div style="font-size:11px;font-weight:bold;">Catatan: ${order.notes}</div>`
+            : ''
+
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Captain Order</title>
+<style>
+    @page { size: 56mm auto; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        width: 48mm;
+        padding: 2mm;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        color: #000;
+        background: #fff;
     }
+    .dashed { border-bottom: 1px dashed #000; margin: 5px 0; }
+    .center { text-align: center; }
+    .row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+    .bold { font-weight: bold; }
+</style>
+</head>
+<body>
+    <div class="center" style="margin-bottom:4px;">
+        <div style="font-size:14px;font-weight:bold;letter-spacing:2px;">CAPTAIN ORDER</div>
+        <div style="font-size:10px;">Kareeem Juice</div>
+    </div>
+    <div class="dashed"></div>
 
-    const S = {
-        wrap: {
-            fontFamily: "'Courier New', Courier, monospace",
-            fontSize: '12px', lineHeight: 1.5, color: '#000',
-            background: '#fff',
-        },
-        dashed: { borderBottom: '1px dashed #000', margin: '5px 0' },
-        center: { textAlign: 'center' },
-        row: { display: 'flex', justifyContent: 'space-between', marginBottom: '2px' },
-        bold: { fontWeight: 'bold' },
-    }
+    <div style="margin-bottom:4px;font-size:12px;">
+        <div><strong>No:</strong> ${order.order_number || '-'}</div>
+        <div><strong>Tgl:</strong> ${fmtDate(order.created_at)}</div>
+        <div><strong>Nama:</strong> ${order.customer_name || '-'}</div>
+        <div><strong>Bayar:</strong> ${order.payment_method === 'cashless' ? 'QRIS' : 'Cash'}</div>
+    </div>
+    <div class="dashed"></div>
 
-    return createPortal(
-        <div id="print-receipt" style={S.wrap}>
-            {/* Header */}
-            <div style={{ ...S.center, marginBottom: '4px' }}>
-                <div style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '2px' }}>CAPTAIN ORDER</div>
-                <div style={{ fontSize: '10px' }}>Kareeem Juice</div>
-            </div>
-            <div style={S.dashed} />
+    ${itemsHTML}
 
-            {/* Order Info */}
-            <div style={{ marginBottom: '4px', fontSize: '12px' }}>
-                <div><strong>No:</strong> {order.order_number}</div>
-                <div><strong>Tgl:</strong> {formatDate(order.created_at)}</div>
-                <div><strong>Nama:</strong> {order.customer_name}</div>
-                <div><strong>Bayar:</strong> {order.payment_method === 'cashless' ? 'QRIS' : 'Cash'}</div>
-            </div>
-            <div style={S.dashed} />
+    <div class="dashed"></div>
 
-            {/* Items */}
-            <div style={{ marginBottom: '2px' }}>
-                {order.items?.map((item, i) => (
-                    <div key={i} style={{ ...S.row, fontSize: '12px' }}>
-                        <span>{i + 1}. {item.name} x{item.quantity}</span>
-                        <span>{formatRupiah(item.price * item.quantity)}</span>
-                    </div>
-                ))}
-            </div>
-            <div style={S.dashed} />
+    <div class="row bold" style="font-size:13px;">
+        <span>TOTAL</span>
+        <span>${fmtRupiah(order.total_amount)}</span>
+    </div>
 
-            {/* Total */}
-            <div style={{ ...S.row, ...S.bold, fontSize: '13px' }}>
-                <span>TOTAL</span>
-                <span>{formatRupiah(order.total_amount)}</span>
-            </div>
+    ${notesHTML}
 
-            {/* Notes */}
-            {order.notes && (
-                <>
-                    <div style={S.dashed} />
-                    <div style={{ fontSize: '11px', fontWeight: 'bold' }}>
-                        Catatan: {order.notes}
-                    </div>
-                </>
-            )}
+    <div class="dashed"></div>
+    <div class="center" style="font-size:10px;margin-top:4px;">
+        Kareeem Juice 🍊
+    </div>
+</body>
+</html>`
 
-            <div style={S.dashed} />
-            <div style={{ ...S.center, fontSize: '10px', marginTop: '4px' }}>
-                Kareeem Juice 🍊
-            </div>
-        </div>,
-        document.body
-    )
+        // Create hidden iframe, write receipt HTML, print from it
+        const iframe = document.createElement('iframe')
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:none;'
+        document.body.appendChild(iframe)
+
+        const doc = iframe.contentWindow.document
+        doc.open()
+        doc.write(html)
+        doc.close()
+
+        setTimeout(() => {
+            iframe.contentWindow.focus()
+            iframe.contentWindow.print()
+            setTimeout(() => {
+                document.body.removeChild(iframe)
+                onDone()
+            }, 500)
+        }, 400)
+    }, [order, onDone])
+
+    return null
 }
