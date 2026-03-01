@@ -415,7 +415,7 @@ export default function OrdersPage() {
 }
 
 // ==========================================
-// Print Receipt Sub-Component (76mm thermal)
+// Captain Order Print (56mm thermal / RawBT)
 // ==========================================
 function PrintReceipt({ order, onDone }) {
     const hasPrinted = useRef(false)
@@ -438,49 +438,66 @@ function PrintReceipt({ order, onDone }) {
         })
     }
 
-    return (
-        <div id="print-receipt" style={{ position: 'fixed', top: 0, left: 0, zIndex: -1 }}>
-            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>KAREEEM JUICE</div>
-                <div style={{ fontSize: '10px' }}>Fresh & Ready to Go</div>
-                <div style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
-            </div>
+    const S = {
+        wrap: {
+            position: 'fixed', top: 0, left: 0, zIndex: -1,
+            fontFamily: "'Courier New', Courier, monospace",
+            fontSize: '12px', lineHeight: 1.5, color: '#000',
+        },
+        dashed: { borderBottom: '1px dashed #000', margin: '5px 0' },
+        center: { textAlign: 'center' },
+        row: { display: 'flex', justifyContent: 'space-between', marginBottom: '2px' },
+        bold: { fontWeight: 'bold' },
+    }
 
-            <div style={{ marginBottom: '6px', fontSize: '11px' }}>
+    return (
+        <div id="print-receipt" style={S.wrap}>
+            {/* Header */}
+            <div style={{ ...S.center, marginBottom: '4px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '2px' }}>CAPTAIN ORDER</div>
+                <div style={{ fontSize: '10px' }}>Kareeem Juice</div>
+            </div>
+            <div style={S.dashed} />
+
+            {/* Order Info */}
+            <div style={{ marginBottom: '4px', fontSize: '12px' }}>
                 <div><strong>No:</strong> {order.order_number}</div>
                 <div><strong>Tgl:</strong> {formatDate(order.created_at)}</div>
                 <div><strong>Nama:</strong> {order.customer_name}</div>
-                {order.customer_phone && <div><strong>Telp:</strong> {order.customer_phone}</div>}
-                {order.customer_address && <div><strong>Alamat:</strong> {order.customer_address}</div>}
                 <div><strong>Bayar:</strong> {order.payment_method === 'cashless' ? 'QRIS' : 'Cash'}</div>
             </div>
+            <div style={S.dashed} />
 
-            <div style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
+            {/* Items */}
+            <div style={{ marginBottom: '2px' }}>
+                {order.items?.map((item, i) => (
+                    <div key={i} style={{ ...S.row, fontSize: '12px' }}>
+                        <span>{i + 1}. {item.name} x{item.quantity}</span>
+                        <span>{formatRupiah(item.price * item.quantity)}</span>
+                    </div>
+                ))}
+            </div>
+            <div style={S.dashed} />
 
-            {order.items?.map((item, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '2px' }}>
-                    <span>{item.name} x{item.quantity}</span>
-                    <span>{formatRupiah(item.price * item.quantity)}</span>
-                </div>
-            ))}
-
-            <div style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
+            {/* Total */}
+            <div style={{ ...S.row, ...S.bold, fontSize: '13px' }}>
                 <span>TOTAL</span>
                 <span>{formatRupiah(order.total_amount)}</span>
             </div>
 
+            {/* Notes */}
             {order.notes && (
-                <div style={{ marginTop: '6px', fontSize: '10px', fontStyle: 'italic' }}>
-                    Catatan: {order.notes}
-                </div>
+                <>
+                    <div style={S.dashed} />
+                    <div style={{ fontSize: '11px', fontWeight: 'bold' }}>
+                        Catatan: {order.notes}
+                    </div>
+                </>
             )}
 
-            <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px' }}>
-                <div style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
-                <div>Terima kasih! 🍊</div>
-                <div>Kareeem Juice — Pesan Online</div>
+            <div style={S.dashed} />
+            <div style={{ ...S.center, fontSize: '10px', marginTop: '4px' }}>
+                Kareeem Juice 🍊
             </div>
         </div>
     )
