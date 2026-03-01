@@ -2,9 +2,10 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function ProtectedRoute({ children }) {
-    const { isAdmin, loading } = useAuth()
+    const { isAdmin, loading, adminChecked } = useAuth()
 
-    if (loading) {
+    // Show loading while auth is initializing OR admin check hasn't completed yet
+    if (loading || !adminChecked) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#fcfaf8]">
                 <div className="flex flex-col items-center gap-3">

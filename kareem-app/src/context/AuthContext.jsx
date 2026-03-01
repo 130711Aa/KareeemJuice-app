@@ -8,6 +8,7 @@ export function AuthProvider({ children }) {
     const [session, setSession] = useState(null)
     const [loading, setLoading] = useState(true)
     const [isAdmin, setIsAdmin] = useState(false)
+    const [adminChecked, setAdminChecked] = useState(false)
     const [isRecovering, setIsRecovering] = useState(false)
 
     useEffect(() => {
@@ -20,19 +21,20 @@ export function AuthProvider({ children }) {
                 const session = data?.session ?? null
                 setSession(session)
                 setUser(session?.user ?? null)
-                checkAdmin(session?.user)
+                await checkAdmin(session?.user)
             } catch (err) {
                 console.error('Auth initialization error:', err)
                 // Start with no user if error
                 setSession(null)
                 setUser(null)
             } finally {
+                setAdminChecked(true)
                 setLoading(false)
             }
         }
         initSession()
 
-        // Listen for changes
+        // Listen for changes (callback must NOT be async — Supabase SDK doesn't support it)
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (import.meta.env.DEV) console.log("Global Auth Event:", event)
 
@@ -42,7 +44,7 @@ export function AuthProvider({ children }) {
 
             setSession(session)
             setUser(session?.user ?? null)
-            checkAdmin(session?.user)
+            // Don't call checkAdmin here — it's handled by login() and initSession()
             setLoading(false)
         })
 
@@ -77,8 +79,15 @@ export function AuthProvider({ children }) {
             email,
             password,
         })
+        if (error) {
+            setLoading(false)
+            return { success: false, error: error.message }
+        }
+        // Wait for admin check to complete before setting loading to false
+        // This prevents ProtectedRoute from redirecting before isAdmin is set
+        await checkAdmin(data.user)
+        setAdminChecked(true)
         setLoading(false)
-        if (error) return { success: false, error: error.message }
         return { success: true, data }
     }
 
@@ -120,7 +129,8 @@ export function AuthProvider({ children }) {
         user,
         session,
         loading,
-        isAdmin, // Use the state variable which is set by checkAdmin
+        isAdmin,
+        adminChecked, // true once checkAdmin has completed at least once
         // Compatibility with existing code asking for 'isAuthenticated'
         isAuthenticated: !!user,
         login,

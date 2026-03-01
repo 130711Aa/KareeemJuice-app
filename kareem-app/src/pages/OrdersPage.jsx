@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useOrders } from '../context/OrdersContext'
+import { useStoreStatus } from '../context/StoreStatusContext'
 import { formatRupiah } from '../lib/utils'
 
 const STATUS_CONFIG = {
@@ -38,6 +39,7 @@ const FILTER_TABS = [
 
 export default function OrdersPage() {
     const { orders, updateOrderStatus, deleteOrder, clearAllOrders } = useOrders()
+    const { isStoreOpen } = useStoreStatus()
     const [activeFilter, setActiveFilter] = useState('all')
     const [expandedOrder, setExpandedOrder] = useState(null)
     const [proofModal, setProofModal] = useState(null) // URL of proof to preview
@@ -48,12 +50,11 @@ export default function OrdersPage() {
         // Force 'Asia/Jakarta' timezone so we follow store hours everywhere
         const now = new Date()
         const jakartaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }))
-        const currentHour = jakartaTime.getHours()
 
         // 2. DAILY CUTOFF RULE:
-        // If it's 19:00 (7 PM) or later, the "Active Orders" view should be empty.
-        // The user wants orders to be "submitted to history" (visually cleared) at this time.
-        if (currentHour >= 19) {
+        // Use manual toggle from admin instead of time-based cutoff.
+        // The user wants orders to be "submitted to history" (visually cleared) when store is manually closed.
+        if (!isStoreOpen) {
             return []
         }
 
@@ -112,8 +113,7 @@ export default function OrdersPage() {
         return `${days} hari lalu`
     }
 
-    const currentJakartaHour = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })).getHours()
-    const shopIsClosed = currentJakartaHour >= 19
+    const shopIsClosed = !isStoreOpen
 
     return (
         <main className="flex flex-1 flex-col px-4 md:px-10 py-8 max-w-7xl mx-auto w-full">
@@ -176,12 +176,12 @@ export default function OrdersPage() {
                     </span>
                     <h3 className="text-xl font-bold text-neutral-400">
                         {shopIsClosed
-                            ? 'Toko Tutup (Lewat Jam 19:00)'
+                            ? 'Toko Sedang Tutup'
                             : activeFilter === 'all' ? 'Belum ada pesanan hari ini' : `Tidak ada pesanan ${FILTER_TABS.find(t => t.key === activeFilter)?.label.toLowerCase()}`}
                     </h3>
                     <p className="text-neutral-400 text-sm mt-1">
                         {shopIsClosed
-                            ? 'Semua pesanan hari ini telah masuk ke Riwayat.'
+                            ? 'Semua pesanan sesi ini telah masuk ke Riwayat.'
                             : 'Pesanan baru hari ini akan muncul di sini.'}
                     </p>
                 </div>
