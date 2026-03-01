@@ -188,9 +188,8 @@ body {
    ============================================ */
 @media print {
 
-    /* Hide everything — use display:none so elements
-       don't occupy space and create blank pages */
-    body > * {
+    /* Hide everything except the receipt */
+    body>*:not(#print-receipt) {
         display: none !important;
     }
 
