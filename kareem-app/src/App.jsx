@@ -11,6 +11,7 @@ import Navbar from './components/Navbar'
 import CartDrawer from './components/CartDrawer'
 import ProtectedRoute from './components/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
+import { useAuth } from './context/AuthContext'
 import AuthPage from './pages/AuthPage'
 import CustomerOrdersPage from './pages/CustomerOrdersPage'
 import ProfilePage from './pages/ProfilePage'
@@ -40,6 +41,15 @@ function AppContent() {
     const isAdmin = location.pathname.startsWith('/admin')
     const isPOS = location.pathname.startsWith('/pos')
     const isLoginPage = location.pathname === '/auth'
+
+    const { isRecovering } = useAuth()
+
+    // Global interception for password recovery
+    // If Supabase detects a recovery link but redirects to a different page (e.g., '/'),
+    // we force the user back to the AuthPage.
+    if (isRecovering && !isLoginPage) {
+        return <Navigate to="/auth" replace />
+    }
 
     return (
         <div className="relative flex flex-col min-h-screen bg-[#fcfaf8]">

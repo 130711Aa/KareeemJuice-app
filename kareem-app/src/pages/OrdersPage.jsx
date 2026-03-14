@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useOrders } from '../context/OrdersContext'
 import { useStoreStatus } from '../context/StoreStatusContext'
 import { formatRupiah } from '../lib/utils'
+import { triggerBluetoothPrint } from '../lib/bluetoothPrint'
 
 const STATUS_CONFIG = {
     pending: {
@@ -357,6 +358,13 @@ export default function OrdersPage() {
                                                 >
                                                     <span className="material-symbols-outlined text-lg">print</span>
                                                     Print
+                                                </button>
+                                                <button
+                                                    onClick={() => triggerBluetoothPrint(order)}
+                                                    className="flex items-center gap-1.5 text-neutral-500 hover:text-blue-600 text-sm font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50"
+                                                >
+                                                    <span className="material-symbols-outlined text-lg">print_connect</span>
+                                                    BT Print
                                                 </button>
                                             </div>
 

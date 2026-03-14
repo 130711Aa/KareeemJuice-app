@@ -55,9 +55,7 @@ export default function AuthPage() {
         } else if (mode === 'update-password') {
             result = await updatePassword(password)
         } else if (mode === 'forgot-password') {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/auth`
-            })
+            const { error } = await supabase.auth.resetPasswordForEmail(email)
             if (error) {
                 result = { success: false, error: error.message }
             } else {
