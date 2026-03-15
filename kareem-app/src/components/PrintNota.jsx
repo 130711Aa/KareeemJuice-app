@@ -117,9 +117,9 @@ export default function PrintNota({ order, userEmail, onClose }) {
                             <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Item Pesanan:</div>
                             {items.length > 0 ? (
                                 items.map((item, idx) => (
-                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                        <span>{item.name} x{item.quantity}</span>
-                                        <span>{formatRupiah((item.price || 0) * (item.quantity || 1))}</span>
+                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px', gap: '8px' }}>
+                                        <span style={{ flex: '1 1 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name} x{item.quantity}</span>
+                                        <span style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>{formatRupiah((item.price || 0) * (item.quantity || 1))}</span>
                                     </div>
                                 ))
                             ) : (

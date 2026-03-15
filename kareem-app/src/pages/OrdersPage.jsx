@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useOrders } from '../context/OrdersContext'
 import { useStoreStatus } from '../context/StoreStatusContext'
 import { formatRupiah } from '../lib/utils'
-import { triggerBluetoothPrint } from '../lib/bluetoothPrint'
+// Web Bluetooth direct printing
+import { connectPrinter, disconnectPrinter, isConnected, getConnectedPrinterName, printOrderDirect } from '../lib/webBluetoothPrint'
 
 const STATUS_CONFIG = {
     pending: {
@@ -44,7 +45,40 @@ export default function OrdersPage() {
     const [activeFilter, setActiveFilter] = useState('all')
     const [expandedOrder, setExpandedOrder] = useState(null)
     const [proofModal, setProofModal] = useState(null) // URL of proof to preview
-    const [printOrder, setPrintOrder] = useState(null)
+    
+    // Web Bluetooth state
+    const [btConnected, setBtConnected] = useState(false)
+    const [btPrinterName, setBtPrinterName] = useState(null)
+    const [btConnecting, setBtConnecting] = useState(false)
+
+    const handleConnectPrinter = async () => {
+        if (btConnected) {
+            disconnectPrinter()
+            setBtConnected(false)
+            setBtPrinterName(null)
+            return
+        }
+        try {
+            setBtConnecting(true)
+            const name = await connectPrinter()
+            setBtConnected(true)
+            setBtPrinterName(name)
+        } catch (err) {
+            alert(err.message)
+        } finally {
+            setBtConnecting(false)
+        }
+    }
+
+    const handleDirectPrint = async (order, silent = false) => {
+        try {
+            await printOrderDirect(order)
+        } catch (err) {
+            if (!silent) {
+                alert('Gagal print: ' + err.message)
+            }
+        }
+    }
 
     const todaysOrders = useMemo(() => {
         // 1. Get Current Time (WIB/Local)
@@ -124,13 +158,28 @@ export default function OrdersPage() {
                     <h1 className="text-3xl md:text-4xl font-black tracking-tight">Pesanan Masuk</h1>
                     <p className="text-neutral-500 text-base">Kelola pesanan dari pelanggan secara real-time</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                     {counts.pending > 0 && (
                         <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 px-4 py-2 rounded-xl animate-pulse">
                             <span className="material-symbols-outlined text-orange-500 text-lg">notification_important</span>
                             <span className="text-sm font-bold text-orange-700">{counts.pending} pesanan menunggu</span>
                         </div>
                     )}
+                    {/* Connect Printer Button */}
+                    <button
+                        onClick={handleConnectPrinter}
+                        disabled={btConnecting}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                            btConnected
+                                ? 'bg-green-50 text-green-700 border-green-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300'
+                                : 'text-blue-500 border-blue-200 hover:bg-blue-50 hover:text-blue-700'
+                        }`}
+                    >
+                        <span className="material-symbols-outlined text-lg">
+                            {btConnecting ? 'hourglass_top' : btConnected ? 'bluetooth_connected' : 'bluetooth'}
+                        </span>
+                        {btConnecting ? 'Menghubungkan...' : btConnected ? `✅ ${btPrinterName}` : 'Hubungkan Printer'}
+                    </button>
                     {orders.length > 0 && (
                         <button
                             onClick={() => { if (confirm('Hapus semua pesanan? Data tidak bisa dikembalikan.')) clearAllOrders() }}
@@ -352,25 +401,36 @@ export default function OrdersPage() {
                                                     <span className="material-symbols-outlined text-lg">delete</span>
                                                     Hapus
                                                 </button>
+                                                {order.status !== 'pending' && (
                                                 <button
-                                                    onClick={() => setPrintOrder(order)}
-                                                    className="flex items-center gap-1.5 text-neutral-500 hover:text-[#ff8c00] text-sm font-medium transition-colors px-3 py-2 rounded-lg hover:bg-orange-50"
+                                                    onClick={() => {
+                                                        if (btConnected) {
+                                                            handleDirectPrint(order)
+                                                        } else {
+                                                            handleConnectPrinter()
+                                                        }
+                                                    }}
+                                                    className={`flex items-center gap-1.5 text-sm font-medium transition-colors px-3 py-2 rounded-lg ${
+                                                        btConnected 
+                                                            ? 'text-neutral-500 hover:text-green-600 hover:bg-green-50' 
+                                                            : 'text-neutral-500 hover:text-blue-600 hover:bg-blue-50'
+                                                    }`}
                                                 >
                                                     <span className="material-symbols-outlined text-lg">print</span>
                                                     Print
                                                 </button>
-                                                <button
-                                                    onClick={() => triggerBluetoothPrint(order)}
-                                                    className="flex items-center gap-1.5 text-neutral-500 hover:text-blue-600 text-sm font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50"
-                                                >
-                                                    <span className="material-symbols-outlined text-lg">print_connect</span>
-                                                    BT Print
-                                                </button>
+                                                )}
                                             </div>
 
                                             {config.next && (
                                                 <button
-                                                    onClick={() => updateOrderStatus(order.id, config.next)}
+                                                    onClick={() => {
+                                                        updateOrderStatus(order.id, config.next)
+                                                        // Auto-print when moving from pending to processing
+                                                        if (order.status === 'pending' && btConnected) {
+                                                            handleDirectPrint(order, true)
+                                                        }
+                                                    }}
                                                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md active:scale-95 ${order.status === 'pending'
                                                         ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-200'
                                                         : 'bg-green-500 hover:bg-green-600 text-white shadow-green-200'
@@ -414,124 +474,6 @@ export default function OrdersPage() {
                 </div>
             )}
 
-            {/* Hidden Print Receipt */}
-            {printOrder && (
-                <PrintReceipt order={printOrder} onDone={() => setPrintOrder(null)} />
-            )}
         </main>
     )
-}
-
-// ==========================================
-// ==========================================
-// Captain Order Print (56mm thermal / RawBT)
-// Uses iframe for reliable mobile printing
-// ==========================================
-function PrintReceipt({ order, onDone }) {
-    const hasPrinted = useRef(false)
-
-    useEffect(() => {
-        if (hasPrinted.current) return
-        hasPrinted.current = true
-
-        const fmtDate = (iso) => {
-            const d = new Date(iso)
-            return d.toLocaleString('id-ID', {
-                day: 'numeric', month: 'short', year: 'numeric',
-                hour: '2-digit', minute: '2-digit',
-            })
-        }
-
-        const fmtRupiah = (n) =>
-            new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
-
-        const itemsHTML = (order.items || []).map((item, i) =>
-            `<div style="display:flex;justify-content:space-between;margin-bottom:2px;font-size:12px;">
-                <span>${i + 1}. ${item.name} x${item.quantity}</span>
-                <span>${fmtRupiah(item.price * item.quantity)}</span>
-            </div>`
-        ).join('')
-
-        const notesHTML = order.notes
-            ? `<div style="border-bottom:1px dashed #000;margin:5px 0;"></div>
-               <div style="font-size:11px;font-weight:bold;">Catatan: ${order.notes}</div>`
-            : ''
-
-        const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Captain Order</title>
-<style>
-    @page { size: 56mm auto; margin: 0; }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-        width: 48mm;
-        padding: 2mm;
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 12px;
-        line-height: 1.5;
-        color: #000;
-        background: #fff;
-    }
-    .dashed { border-bottom: 1px dashed #000; margin: 5px 0; }
-    .center { text-align: center; }
-    .row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-    .bold { font-weight: bold; }
-</style>
-</head>
-<body>
-    <div class="center" style="margin-bottom:4px;">
-        <div style="font-size:14px;font-weight:bold;letter-spacing:2px;">CAPTAIN ORDER</div>
-        <div style="font-size:10px;">Kareeem Juice</div>
-    </div>
-    <div class="dashed"></div>
-
-    <div style="margin-bottom:4px;font-size:12px;">
-        <div><strong>No:</strong> ${order.order_number || '-'}</div>
-        <div><strong>Tgl:</strong> ${fmtDate(order.created_at)}</div>
-        <div><strong>Nama:</strong> ${order.customer_name || '-'}</div>
-        <div><strong>Bayar:</strong> ${order.payment_method === 'cashless' ? 'QRIS' : 'Cash'}</div>
-    </div>
-    <div class="dashed"></div>
-
-    ${itemsHTML}
-
-    <div class="dashed"></div>
-
-    <div class="row bold" style="font-size:13px;">
-        <span>TOTAL</span>
-        <span>${fmtRupiah(order.total_amount)}</span>
-    </div>
-
-    ${notesHTML}
-
-    <div class="dashed"></div>
-    <div class="center" style="font-size:10px;margin-top:4px;">
-        Kareeem Juice 🍊
-    </div>
-</body>
-</html>`
-
-        // Create hidden iframe, write receipt HTML, print from it
-        const iframe = document.createElement('iframe')
-        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:none;'
-        document.body.appendChild(iframe)
-
-        const doc = iframe.contentWindow.document
-        doc.open()
-        doc.write(html)
-        doc.close()
-
-        setTimeout(() => {
-            iframe.contentWindow.focus()
-            iframe.contentWindow.print()
-            setTimeout(() => {
-                document.body.removeChild(iframe)
-                onDone()
-            }, 500)
-        }, 400)
-    }, [order, onDone])
-
-    return null
 }
