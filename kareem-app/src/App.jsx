@@ -7,6 +7,7 @@ import { OrdersProvider } from './context/OrdersContext'
 import { CategoriesProvider } from './context/CategoriesContext'
 import { ProductsProvider } from './context/ProductsContext'
 import { StoreStatusProvider } from './context/StoreStatusContext'
+import { PrinterProvider } from './context/PrinterContext'
 import Navbar from './components/Navbar'
 import CartDrawer from './components/CartDrawer'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -118,7 +119,9 @@ export default function App() {
                             <CategoriesProvider>
                                 <CartProvider>
                                     <StoreStatusProvider>
-                                        <AppContent />
+                                        <PrinterProvider>
+                                            <AppContent />
+                                        </PrinterProvider>
                                     </StoreStatusProvider>
                                 </CartProvider>
                             </CategoriesProvider>

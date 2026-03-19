@@ -2,8 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useOrders } from '../context/OrdersContext'
 import { useStoreStatus } from '../context/StoreStatusContext'
 import { formatRupiah } from '../lib/utils'
-// Web Bluetooth direct printing
-import { connectPrinter, disconnectPrinter, isConnected, getConnectedPrinterName, printOrderDirect } from '../lib/webBluetoothPrint'
+import { usePrinter } from '../context/PrinterContext'
 
 const STATUS_CONFIG = {
     pending: {
@@ -46,37 +45,21 @@ export default function OrdersPage() {
     const [expandedOrder, setExpandedOrder] = useState(null)
     const [proofModal, setProofModal] = useState(null) // URL of proof to preview
     
-    // Web Bluetooth state
-    const [btConnected, setBtConnected] = useState(false)
-    const [btPrinterName, setBtPrinterName] = useState(null)
-    const [btConnecting, setBtConnecting] = useState(false)
+    // Web Bluetooth from global context
+    const { 
+        btConnected, 
+        btPrinterName, 
+        btConnecting, 
+        lastPrinterName,
+        handleConnectPrinter, 
+        handleDirectPrint 
+    } = usePrinter()
 
-    const handleConnectPrinter = async () => {
-        if (btConnected) {
-            disconnectPrinter()
-            setBtConnected(false)
-            setBtPrinterName(null)
-            return
-        }
+    const onConnectClick = async () => {
         try {
-            setBtConnecting(true)
-            const name = await connectPrinter()
-            setBtConnected(true)
-            setBtPrinterName(name)
+            await handleConnectPrinter()
         } catch (err) {
             alert(err.message)
-        } finally {
-            setBtConnecting(false)
-        }
-    }
-
-    const handleDirectPrint = async (order, silent = false) => {
-        try {
-            await printOrderDirect(order)
-        } catch (err) {
-            if (!silent) {
-                alert('Gagal print: ' + err.message)
-            }
         }
     }
 
@@ -167,7 +150,7 @@ export default function OrdersPage() {
                     )}
                     {/* Connect Printer Button */}
                     <button
-                        onClick={handleConnectPrinter}
+                        onClick={onConnectClick}
                         disabled={btConnecting}
                         className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${
                             btConnected
@@ -178,7 +161,14 @@ export default function OrdersPage() {
                         <span className="material-symbols-outlined text-lg">
                             {btConnecting ? 'hourglass_top' : btConnected ? 'bluetooth_connected' : 'bluetooth'}
                         </span>
-                        {btConnecting ? 'Menghubungkan...' : btConnected ? `✅ ${btPrinterName}` : 'Hubungkan Printer'}
+                        {btConnecting 
+                            ? 'Menghubungkan...' 
+                            : btConnected 
+                                ? `✅ ${btPrinterName}` 
+                                : lastPrinterName 
+                                    ? `Hubungkan Kembali ke ${lastPrinterName}` 
+                                    : 'Hubungkan Printer'
+                        }
                     </button>
                     {orders.length > 0 && (
                         <button
@@ -407,7 +397,7 @@ export default function OrdersPage() {
                                                         if (btConnected) {
                                                             handleDirectPrint(order)
                                                         } else {
-                                                            handleConnectPrinter()
+                                                            onConnectClick()
                                                         }
                                                     }}
                                                     className={`flex items-center gap-1.5 text-sm font-medium transition-colors px-3 py-2 rounded-lg ${
@@ -426,10 +416,6 @@ export default function OrdersPage() {
                                                 <button
                                                     onClick={() => {
                                                         updateOrderStatus(order.id, config.next)
-                                                        // Auto-print when moving from pending to processing
-                                                        if (order.status === 'pending' && btConnected) {
-                                                            handleDirectPrint(order, true)
-                                                        }
                                                     }}
                                                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md active:scale-95 ${order.status === 'pending'
                                                         ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-200'

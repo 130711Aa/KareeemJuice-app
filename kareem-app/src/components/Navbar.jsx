@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { useOrders } from '../context/OrdersContext'
+import { usePrinter } from '../context/PrinterContext'
 
 function CustomerNavbar() {
     const { user, logout } = useAuth()
@@ -73,6 +74,7 @@ function AdminNavbar() {
     const { orders } = useOrders()
     const pendingCount = orders.filter(o => o.status === 'pending').length
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+    const { btConnected, btPrinterName, lastPrinterName, handleConnectPrinter } = usePrinter()
 
     const handleLogout = () => {
         logout()
@@ -163,6 +165,28 @@ function AdminNavbar() {
                     >
                         <span className="material-symbols-outlined text-lg">logout</span>
                         <span className="hidden sm:inline">Keluar</span>
+                    </button>
+
+                    {/* Printer Status Indicator */}
+                    <button 
+                        onClick={() => {
+                            if (!btConnected) {
+                                handleConnectPrinter().catch(err => alert(err.message))
+                            }
+                        }}
+                        className={`hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
+                            btConnected 
+                                ? 'bg-green-50 text-green-700 border-green-200' 
+                                : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100 cursor-pointer'
+                        }`}
+                        title={btConnected ? `Terhubung ke: ${btPrinterName}` : lastPrinterName ? `Klik untuk hubungkan kembali ke ${lastPrinterName}` : 'Printer tidak terhubung'}
+                    >
+                        <span className="material-symbols-outlined text-[16px]">
+                            {btConnected ? 'bluetooth_connected' : 'bluetooth'}
+                        </span>
+                        <span className="hidden xl:inline max-w-[100px] truncate">
+                            {btConnected ? btPrinterName : 'Offline'}
+                        </span>
                     </button>
                 </div>
             </div>

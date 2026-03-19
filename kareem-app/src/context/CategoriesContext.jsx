@@ -6,7 +6,7 @@ const CategoriesContext = createContext()
 const DEFAULT_CATEGORIES = ['Jus Segar', 'Smoothies', 'Mocktails']
 
 export function CategoriesProvider({ children }) {
-    const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
+    const [categories, setCategories] = useState([])
     const [loading, setLoading] = useState(true)
 
     const fetchCategories = useCallback(async () => {

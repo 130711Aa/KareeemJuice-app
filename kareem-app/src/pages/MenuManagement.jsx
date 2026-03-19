@@ -14,20 +14,23 @@ export default function MenuManagement() {
     const [imagePreview, setImagePreview] = useState(null)
     const [imageFile, setImageFile] = useState(null)
     const fileInputRef = useRef(null)
-    const [addForm, setAddForm] = useState({ name: '', description: '', price: '', category: '' })
+    const [addForm, setAddForm] = useState({ name: '', description: '', price: '', category: '', stock: '' })
 
     const handleAddSubmit = (e) => {
         e.preventDefault()
         if (!addForm.name.trim() || !addForm.price || !addForm.category) return
+        const stockQty = Number(addForm.stock) || 0
         addProduct({
             name: addForm.name.trim(),
             description: addForm.description.trim(),
             price: Number(addForm.price),
             category: addForm.category,
             image_url: imagePreview || '',
+            stock: stockQty,
+            stock_status: stockQty > 0,
         })
         toast.success(`"${addForm.name}" berhasil ditambahkan!`)
-        setAddForm({ name: '', description: '', price: '', category: '' })
+        setAddForm({ name: '', description: '', price: '', category: '', stock: '' })
         clearImage()
         setShowAddModal(false)
     }
@@ -346,6 +349,18 @@ export default function MenuManagement() {
                                         ))}
                                     </select>
                                 </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-neutral-600 mb-1.5">Stok Awal</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={addForm.stock}
+                                    onChange={e => setAddForm(f => ({ ...f, stock: e.target.value }))}
+                                    className="w-full px-4 py-3 bg-[#fcfaf8] border border-[#ff8c00]/10 rounded-xl text-sm focus:ring-2 focus:ring-[#ff8c00]/30 outline-none"
+                                    placeholder="Contoh: 10 (kosongkan = habis)"
+                                />
+                                <p className="text-[11px] text-neutral-400 mt-1">Stok &gt; 0 = tersedia, kosong/0 = stok habis</p>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-neutral-600 mb-1.5">Gambar Produk</label>

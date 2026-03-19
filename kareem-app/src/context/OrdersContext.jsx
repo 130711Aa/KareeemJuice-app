@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
 import { generateOrderId } from '../lib/utils'
 import toast from 'react-hot-toast'
+import { playNotificationSound } from '../lib/sound'
 
 const OrdersContext = createContext()
 
@@ -25,15 +26,16 @@ export function OrdersProvider({ children }) {
     useEffect(() => {
         if (!loading && orders.length > 0) {
             try {
-                // Only persist the 20 most recent orders to avoid QuotaExceededError
-                const ordersToCache = orders.slice(0, 20)
+                // Strip payment_proof (large base64) to save localStorage space
+                const ordersToCache = orders.slice(0, 20).map(({ payment_proof, payment_proof_path, ...rest }) => rest)
                 localStorage.setItem('kareeem_orders', JSON.stringify(ordersToCache))
             } catch (err) {
                 console.warn('Failed to save orders to localStorage (Quota Exceeded):', err)
+                // If it fails again, try clearing and saving only the IDs
+                try {
+                    localStorage.removeItem('kareeem_orders')
+                } catch (e) {}
             }
-        } else if (!loading && orders.length === 0) {
-            // Optional: clear if empty? Or keep?
-            // localStorage.removeItem('kareeem_orders')
         }
     }, [orders, loading])
 
@@ -216,7 +218,7 @@ export function OrdersProvider({ children }) {
                         if (!error && newOrder) {
                             setOrders(prev => {
                                 if (prev.some(o => o.id === newOrder.id)) return prev
-                                // Toast only on admin/POS pages (not on customer pages)
+                                // Notification only on admin/POS pages
                                 const isAdminOrPOS = window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/pos')
                                 if (isAdminOrPOS) {
                                     toast.success(`Pesanan Baru Masuk! #${newOrder.order_number}`, {
@@ -224,6 +226,8 @@ export function OrdersProvider({ children }) {
                                         position: 'top-right',
                                         duration: 4000
                                     })
+                                    // Play notification sound
+                                    playNotificationSound()
                                 }
                                 const updated = [newOrder, ...prev]
                                 updated.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))

@@ -1,21 +1,14 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
-import { sampleProducts as defaultProducts } from '../data/products'
+// import { sampleProducts as defaultProducts } from '../data/products' // Replaced with DB fetch
 import { supabase } from '../lib/supabase'
 
 const ProductsContext = createContext()
 
 export function ProductsProvider({ children }) {
     // Initialize with local storage or defaults to avoid white screen/empty state
-    const [products, setProducts] = useState(() => {
-        try {
-            const stored = localStorage.getItem('kareeem_products')
-            return stored ? JSON.parse(stored) : defaultProducts
-        } catch (e) {
-            console.error("Failed to parse local products", e)
-            return defaultProducts
-        }
-    })
-    const [loading, setLoading] = useState(false)
+    // Initialize with empty state instead of hardcoded data
+    const [products, setProducts] = useState([])
+    const [loading, setLoading] = useState(true)
 
     // Retry protection
     const productsCooldownRef = useRef(false)
@@ -109,7 +102,8 @@ export function ProductsProvider({ children }) {
         const newProduct = {
             ...product,
             id: Date.now(), // Generate ID (BigInt compatible)
-            stock_status: true,
+            // Respect stock_status from caller if provided, otherwise default to true
+            stock_status: product.stock_status !== undefined ? product.stock_status : true,
         }
 
         // Optimistic update
@@ -175,6 +169,7 @@ export function ProductsProvider({ children }) {
             addProduct,
             deleteProduct,
             updateProduct,
+            loading,
         }}>
             {children}
         </ProductsContext.Provider>

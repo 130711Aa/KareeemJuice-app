@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { formatRupiah } from '../lib/utils'
 import POSLayout from '../components/pos/POSLayout'
 import toast from 'react-hot-toast'
+import { usePrinter } from '../context/PrinterContext'
 
 export default function POSPage() {
     // Persist POS session
@@ -18,6 +19,7 @@ export default function POSPage() {
     const { filterCategories } = useCategories()
     const { addOrder } = useOrders()
     const { user } = useAuth()
+    const { btConnected, btPrinterName, handleConnectPrinter, handleDirectPrint } = usePrinter()
 
     // POS-local cart (separate from customer CartContext)
     const [cart, setCart] = useState([])
@@ -164,9 +166,24 @@ export default function POSPage() {
                     price: item.price,
                     quantity: item.quantity,
                 })),
+                // Add kembalian fields for cash payments
+                ...(paymentMethod === 'cash' && {
+                    cash_paid: parseInt(cashPaidAmount) || 0,
+                    change_amount: changeAmount
+                })
             }
 
-            await addOrder(orderData)
+            const savedOrder = await addOrder(orderData)
+
+            // Auto-print receipt silently via Web Bluetooth
+            if (btConnected && savedOrder) {
+                try {
+                    await handleDirectPrint(savedOrder, false)
+                } catch (e) {
+                    console.error('BLE Auto-print failed:', e)
+                    toast.error('Gagal cetak otomatis: ' + e.message)
+                }
+            }
 
             toast.success('Pembayaran berhasil! ✅', {
                 duration: 2500,
@@ -333,6 +350,22 @@ export default function POSPage() {
                 <div className="px-6 py-4 flex justify-between items-center border-b border-slate-100">
                     <h2 className="text-lg font-bold text-slate-900">Pesanan</h2>
                     <div className="flex items-center gap-2">
+                        {/* Printer Status Chip */}
+                        <button
+                            onClick={() => { if (!btConnected) handleConnectPrinter().catch(e => alert(e.message)) }}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold border ${
+                                btConnected 
+                                    ? 'bg-green-50 text-green-700 border-green-200' 
+                                    : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100 cursor-pointer'
+                            }`}
+                            title={btConnected ? `Printer: ${btPrinterName}` : 'Printer belum terhubung'}
+                        >
+                            <span className="material-symbols-outlined text-[12px]">
+                                {btConnected ? 'bluetooth_connected' : 'bluetooth'}
+                            </span>
+                            {btConnected ? 'Siap' : 'Offline'}
+                        </button>
+
                         {totalItems > 0 && (
                             <span className="text-xs bg-[#ff8c00]/10 text-[#ff8c00] px-2.5 py-1 rounded-full font-bold">
                                 {totalItems} item

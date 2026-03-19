@@ -7,12 +7,14 @@ import { useStoreStatus } from '../context/StoreStatusContext'
 import { formatRupiah } from '../lib/utils'
 
 export default function MenuPage() {
-    const { filterCategories } = useCategories()
-    const { availableProducts } = useProducts()
+    const { filterCategories, loading: catLoading } = useCategories()
+    const { availableProducts, loading: prodLoading } = useProducts()
     const { totalItems, totalPrice, setIsOpen } = useCart()
     const { isStoreOpen } = useStoreStatus()
     const [selectedCategory, setSelectedCategory] = useState('Semua')
     const [searchQuery, setSearchQuery] = useState('')
+
+    const isLoading = catLoading || prodLoading
 
     const filteredProducts = useMemo(() => {
         let products = availableProducts
@@ -28,6 +30,29 @@ export default function MenuPage() {
         }
         return products
     }, [selectedCategory, searchQuery, availableProducts])
+
+    // Loading Skeletons for categories and products
+    if (isLoading) {
+        return (
+            <main className="flex flex-1 flex-col min-h-screen bg-[#faf8f5]">
+                <div className="px-4 md:px-8 pt-4">
+                    <div className="h-40 md:h-64 rounded-2xl bg-slate-200 animate-pulse" />
+                </div>
+                <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8">
+                    <div className="flex gap-2 mb-8 overflow-hidden">
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className="h-10 w-24 bg-slate-200 rounded-full animate-pulse" />
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                            <div key={i} className="h-64 bg-slate-200 rounded-2xl animate-pulse" />
+                        ))}
+                    </div>
+                </div>
+            </main>
+        )
+    }
 
     return (
         <main className="flex flex-1 flex-col min-h-screen bg-[#faf8f5]">

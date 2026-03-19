@@ -136,6 +136,15 @@ export function buildReceiptBytes(order) {
     add(cmdBold(true))
     add(cmdAlign(2)) // right
     add(text(`TOTAL: ${fmtRupiah(order.total_amount)}`))
+    
+    // Add Kembalian details if this was a cash payment from POS
+    if (order.cash_paid !== undefined && order.change_amount !== undefined) {
+        add(cmdBold(false))
+        add(cmdDashedLine())
+        add(text(`Tunai: ${fmtRupiah(order.cash_paid)}`))
+        add(text(`Kembali: ${fmtRupiah(order.change_amount)}`))
+    }
+    
     add(cmdBold(false))
     add(cmdAlign(0))
 

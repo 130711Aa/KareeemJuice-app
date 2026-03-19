@@ -22,15 +22,21 @@ export default function CartDrawer() {
         setShowCheckout(true)
     }
 
-    if (!isOpen) return null
-
     return (
         <>
-            {/* Overlay */}
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" onClick={() => setIsOpen(false)} />
+            {/* Overlay — only shown when open */}
+            {isOpen && (
+                <div
+                    className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+                    onClick={() => setIsOpen(false)}
+                />
+            )}
 
-            {/* Drawer */}
-            <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col animate-slide-in">
+            {/* Drawer — always in DOM, slide in/out via CSS transform */}
+            <div
+                className={`fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                aria-hidden={!isOpen}
+            >
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-[#ff8c00]/10">
                     <div className="flex items-center gap-3">
