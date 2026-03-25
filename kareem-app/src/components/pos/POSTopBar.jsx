@@ -28,18 +28,18 @@ export default function POSTopBar() {
     })
 
     return (
-        <header className="flex items-center justify-between bg-white px-6 py-3 border-b border-slate-200 sticky top-0 z-50">
+        <header className="flex items-center justify-between bg-white/80 backdrop-blur-xl px-6 py-3 sticky top-0 z-50 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
             {/* Left: Back + Brand */}
             <div className="flex items-center gap-4">
                 <BackToAdminButton />
-                <div className="h-8 w-px bg-slate-200" />
+                <div className="h-8 w-px bg-slate-200/50" />
                 <div className="flex items-center gap-3">
-                    <div className="bg-[#ff8c00] p-2 rounded-lg text-white shadow-lg shadow-[#ff8c00]/20">
+                    <div className="bg-[#ff8c00] p-2 rounded-xl text-white shadow-lg shadow-[#ff8c00]/20">
                         <span className="material-symbols-outlined text-2xl">local_drink</span>
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold tracking-tight text-slate-900">Kareeem Juice</h1>
-                        <p className="text-xs text-slate-500 font-medium">Mode Kasir — POS</p>
+                        <h1 className="text-xl font-display font-bold tracking-tight text-slate-900">Kareeem Juice</h1>
+                        <p className="text-xs text-slate-500 font-medium font-sans">Mode Kasir — POS</p>
                     </div>
                 </div>
             </div>
@@ -47,14 +47,14 @@ export default function POSTopBar() {
             {/* Right: Cashier + Clock */}
             <div className="flex items-center gap-8">
                 <div className="hidden md:flex flex-col items-end">
-                    <span className="text-sm font-semibold text-slate-700">{cashierName}</span>
-                    <span className="text-xs text-slate-500">Kasir Aktif</span>
+                    <span className="text-sm font-semibold text-slate-700 font-sans">{cashierName}</span>
+                    <span className="text-xs text-slate-400 font-sans">Kasir Aktif</span>
                 </div>
-                <div className="hidden lg:flex flex-col items-end border-l border-slate-200 pl-8">
-                    <span className="text-sm font-medium text-slate-700">{formattedDate}</span>
-                    <span className="text-xs text-slate-500 tabular-nums">{formattedTime}</span>
+                <div className="hidden lg:flex flex-col items-end border-l border-slate-200/50 pl-8">
+                    <span className="text-sm font-medium text-slate-700 font-sans">{formattedDate}</span>
+                    <span className="text-xs text-slate-400 tabular-nums font-sans">{formattedTime}</span>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-[#ff8c00]/10 flex items-center justify-center border-2 border-white shadow-sm">
+                <div className="w-10 h-10 rounded-full bg-[#ff8c00]/10 flex items-center justify-center shadow-inner">
                     <span className="material-symbols-outlined text-[#ff8c00]">person</span>
                 </div>
             </div>

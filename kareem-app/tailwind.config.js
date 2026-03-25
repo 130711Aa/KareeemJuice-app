@@ -7,6 +7,7 @@ export default {
     theme: {
         extend: {
             fontFamily: {
+                sans: ['Manrope', 'sans-serif'],
                 display: ['Plus Jakarta Sans', 'sans-serif'],
             },
             colors: {

@@ -9,6 +9,121 @@ import POSLayout from '../components/pos/POSLayout'
 import toast from 'react-hot-toast'
 import { usePrinter } from '../context/PrinterContext'
 
+function SwipeableCartItem({ item, updateQuantity, removeFromCart, formatRupiah }) {
+    const [translateX, setTranslateX] = useState(0)
+    const [isSwiping, setIsSwiping] = useState(false)
+    const startXRef = useRef(0)
+    const THRESHOLD = 100
+
+    // Touch events for mobile/tablet
+    const onTouchStart = (e) => {
+        startXRef.current = e.touches[0].clientX
+        setIsSwiping(true)
+    }
+    const onTouchMove = (e) => {
+        if (!isSwiping) return
+        const diff = e.touches[0].clientX - startXRef.current
+        if (diff > 0) setTranslateX(diff) // Only Right swipe
+    }
+    const onTouchEnd = () => {
+        if (!isSwiping) return
+        setIsSwiping(false)
+        if (translateX > THRESHOLD) {
+            setTranslateX(window.innerWidth) // slide out
+            setTimeout(() => removeFromCart(item.id), 250)
+        } else {
+            setTranslateX(0) // snap back
+        }
+    }
+
+    // Mouse events for desktop debugging
+    const onMouseDown = (e) => {
+        startXRef.current = e.clientX
+        setIsSwiping(true)
+    }
+    const onMouseMove = (e) => {
+        if (!isSwiping) return
+        const diff = e.clientX - startXRef.current
+        if (diff > 0) setTranslateX(diff)
+    }
+    const onMouseUp = () => {
+        if (!isSwiping) return
+        setIsSwiping(false)
+        if (translateX > THRESHOLD) {
+            setTranslateX(window.innerWidth)
+            setTimeout(() => removeFromCart(item.id), 250)
+        } else {
+            setTranslateX(0)
+        }
+    }
+
+    return (
+        <div className="relative overflow-hidden rounded-2xl mb-2 bg-[#fee2e2]">
+            {/* Delete Background / Icon under the swipeable item */}
+            <div className="absolute inset-0 flex items-center justify-start px-4 text-red-600">
+                <span className="material-symbols-outlined text-3xl">delete</span>
+                <span className="ml-2 font-bold text-sm uppercase tracking-widest whitespace-nowrap">Hapus Item</span>
+            </div>
+
+            {/* Swipeable Surface */}
+            <div
+                className="relative flex items-center gap-4 bg-white p-3 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-transform ease-out will-change-transform z-10 select-none cursor-grab active:cursor-grabbing"
+                style={{
+                    transform: `translateX(${translateX}px)`,
+                    transitionDuration: isSwiping ? '0ms' : '250ms'
+                }}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+                onMouseDown={onMouseDown}
+                onMouseMove={onMouseMove}
+                onMouseUp={onMouseUp}
+                onMouseLeave={onMouseUp}
+            >
+                {/* Thumbnail */}
+                {item.image_url ? (
+                    <div
+                        className="w-14 h-14 rounded-xl bg-cover bg-center shadow-sm flex-shrink-0"
+                        style={{ backgroundImage: `url(${item.image_url})` }}
+                    />
+                ) : (
+                    <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-outlined text-slate-300 text-2xl">local_drink</span>
+                    </div>
+                )}
+                
+                {/* Info */}
+                <div className="flex-1 min-w-0 pointer-events-none">
+                    <h4 className="text-sm font-bold text-slate-900 truncate font-display">{item.name}</h4>
+                    <p className="text-xs text-slate-500 font-sans">{formatRupiah(item.price)}</p>
+                </div>
+                
+                {/* Quantity Controls - stopPropagation so swipe doesn't interfere when tapping buttons */}
+                <div className="flex items-center gap-2" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
+                    <button
+                        onClick={() => updateQuantity(item.id, -1)}
+                        className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                    >
+                        <span className="text-lg font-bold leading-none">−</span>
+                    </button>
+                    <span className="font-bold text-sm w-6 text-center tabular-nums font-display">{item.quantity}</span>
+                    <button
+                        onClick={() => updateQuantity(item.id, 1)}
+                        className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#ff8c00]/10 text-[#ff8c00] font-bold hover:bg-[#ff8c00]/20 transition-colors"
+                    >
+                        <span className="text-lg leading-none">+</span>
+                    </button>
+                </div>
+                
+                {/* Subtotal */}
+                <div className="text-right ml-2 min-w-[70px] pointer-events-none">
+                    <p className="text-sm font-black text-slate-900 tabular-nums font-display">{formatRupiah(item.price * item.quantity)}</p>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 export default function POSPage() {
     // Persist POS session
     useEffect(() => {
@@ -231,18 +346,18 @@ export default function POSPage() {
 
     return (
         <POSLayout>
-            {/* ═══ LEFT: Product Browsing (65%) ═══ */}
-            <section className="w-[65%] flex flex-col p-6 gap-4 overflow-hidden">
+            {/* ═══ LEFT: Product Browsing (60%) ═══ */}
+            <section className="w-[60%] flex flex-col p-5 gap-3 overflow-hidden">
                 {/* Search Bar */}
                 <div className="relative group flex-shrink-0">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#ff8c00] transition-colors">search</span>
+                    <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#ff8c00] transition-colors">search</span>
                     <input
                         ref={searchRef}
                         type="text"
                         placeholder="Cari menu (contoh: Mangga, Avocado...)"
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="w-full bg-white border-none rounded-xl py-4 pl-12 pr-12 text-lg shadow-sm focus:ring-2 focus:ring-[#ff8c00]/50 transition-all outline-none text-slate-900"
+                        className="w-full bg-[#f3f4f5] border-none rounded-full py-4 pl-14 pr-12 text-sm font-medium focus:ring-2 focus:ring-[#ff8c00]/30 transition-all outline-none text-slate-900"
                     />
                     {search && (
                         <button
@@ -261,8 +376,8 @@ export default function POSPage() {
                             key={cat}
                             onClick={() => setActiveCategory(cat)}
                             className={`whitespace-nowrap px-6 py-2.5 rounded-full font-semibold transition-all ${activeCategory === cat
-                                ? 'bg-[#ff8c00] text-white shadow-md shadow-[#ff8c00]/20 font-bold'
-                                : 'bg-white text-slate-600 hover:bg-slate-50 shadow-sm border border-slate-100'
+                                ? 'bg-[#ff8c00] text-white shadow-lg shadow-[#ff8c00]/20 font-bold'
+                                : 'bg-[#f3f4f5] text-slate-600 hover:bg-[#e3e4e5] border-none shadow-none'
                                 }`}
                         >
                             {cat}
@@ -278,7 +393,7 @@ export default function POSPage() {
                             <p className="text-base font-medium">Produk tidak ditemukan</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
+                        <div className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pb-4">
                             {filtered.map(product => {
                                 const inCart = cart.find(c => c.id === product.id)
                                 const isOutOfStock = !product.stock_status
@@ -287,25 +402,25 @@ export default function POSPage() {
                                     /* Out of Stock Card */
                                     <div
                                         key={product.id}
-                                        className="flex flex-col bg-white rounded-xl overflow-hidden shadow-sm opacity-60 relative border border-slate-100 grayscale cursor-not-allowed"
+                                        className="flex flex-col bg-white rounded-2xl overflow-hidden opacity-60 relative border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] grayscale cursor-not-allowed"
                                     >
                                         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
                                             <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">HABIS</span>
                                         </div>
                                         {product.image_url ? (
                                             <div
-                                                className="aspect-square w-full bg-slate-100 bg-cover bg-center"
+                                                className="aspect-[4/5] w-full bg-slate-100 bg-cover bg-center"
                                                 style={{ backgroundImage: `url(${product.image_url})` }}
                                             />
                                         ) : (
-                                            <div className="aspect-square w-full bg-slate-100 flex items-center justify-center">
+                                            <div className="aspect-[4/5] w-full bg-slate-100 flex items-center justify-center">
                                                 <span className="material-symbols-outlined text-slate-300 text-4xl">local_drink</span>
                                             </div>
                                         )}
                                         <div className="p-4 flex flex-col gap-1">
                                             <span className="text-[#ff8c00] text-[10px] font-bold uppercase tracking-widest">{product.category}</span>
-                                            <h3 className="font-bold text-slate-900 truncate">{product.name}</h3>
-                                            <p className="text-lg font-bold text-slate-900">{formatRupiah(product.price)}</p>
+                                            <h3 className="font-bold text-slate-900 truncate font-display">{product.name}</h3>
+                                            <p className="text-lg font-black text-slate-900 font-display">{formatRupiah(product.price)}</p>
                                         </div>
                                     </div>
                                 ) : (
@@ -313,25 +428,24 @@ export default function POSPage() {
                                     <button
                                         key={product.id}
                                         onClick={() => addToCart(product)}
-                                        className={`flex flex-col bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group text-left border ${inCart ? 'border-[#ff8c00]/40 ring-2 ring-[#ff8c00]/20' : 'border-slate-100'
-                                            }`}
+                                        className="flex flex-col bg-white rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_16px_32px_-10px_rgba(25,28,29,0.06)] hover:-translate-y-1 transition-all duration-300 group text-left relative"
                                     >
                                         {product.image_url ? (
                                             <div
-                                                className="aspect-square w-full bg-slate-100 bg-cover bg-center"
+                                                className="aspect-[4/5] w-full bg-slate-100 bg-cover bg-center"
                                                 style={{ backgroundImage: `url(${product.image_url})` }}
                                             />
                                         ) : (
-                                            <div className="aspect-square w-full bg-slate-100 flex items-center justify-center">
+                                            <div className="aspect-[4/5] w-full bg-slate-100 flex items-center justify-center">
                                                 <span className="material-symbols-outlined text-slate-300 text-4xl group-hover:text-[#ff8c00] transition-colors">local_drink</span>
                                             </div>
                                         )}
                                         <div className="p-4 flex flex-col gap-1 relative">
                                             <span className="text-[#ff8c00] text-[10px] font-bold uppercase tracking-widest">{product.category}</span>
-                                            <h3 className="font-bold text-slate-900 truncate">{product.name}</h3>
-                                            <p className="text-lg font-bold text-slate-900">{formatRupiah(product.price)}</p>
+                                            <h3 className="font-bold text-slate-900 truncate font-display">{product.name}</h3>
+                                            <p className="text-lg font-black text-slate-900 font-display">{formatRupiah(product.price)}</p>
                                             {inCart && (
-                                                <span className="absolute top-2 right-2 size-7 bg-[#ff8c00] text-white rounded-full text-xs font-bold flex items-center justify-center shadow-md">
+                                                <span className="absolute top-4 right-4 h-8 min-w-8 px-2 bg-[#ff8c00] text-white rounded-full text-sm font-black flex items-center justify-center shadow-lg shadow-[#ff8c00]/30 font-display pointer-events-none">
                                                     {inCart.quantity}
                                                 </span>
                                             )}
@@ -344,143 +458,106 @@ export default function POSPage() {
                 </div>
             </section>
 
-            {/* ═══ RIGHT: Cart & Payment (35%) ═══ */}
-            <aside className="w-[35%] bg-white border-l border-slate-200 flex flex-col shadow-2xl">
+            {/* ═══ RIGHT: Cart & Payment (40%) ═══ */}
+            <aside className="w-[40%] bg-[#f3f4f5] flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-20">
                 {/* Cart Header */}
-                <div className="px-6 py-4 flex justify-between items-center border-b border-slate-100">
-                    <h2 className="text-lg font-bold text-slate-900">Pesanan</h2>
+                <div className="px-6 py-5 flex justify-between items-center bg-white/50 backdrop-blur-md pb-4 z-10 sticky top-0">
+                    <h2 className="text-xl font-display font-bold text-slate-900">Pesanan</h2>
                     <div className="flex items-center gap-2">
                         {/* Printer Status Chip */}
                         <button
                             onClick={() => { if (!btConnected) handleConnectPrinter().catch(e => alert(e.message)) }}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold border ${
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                                 btConnected 
-                                    ? 'bg-green-50 text-green-700 border-green-200' 
-                                    : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100 cursor-pointer'
+                                    ? 'bg-emerald-50 text-emerald-700' 
+                                    : 'bg-white text-slate-500 hover:bg-slate-50 cursor-pointer shadow-sm'
                             }`}
                             title={btConnected ? `Printer: ${btPrinterName}` : 'Printer belum terhubung'}
                         >
-                            <span className="material-symbols-outlined text-[12px]">
+                            <span className="material-symbols-outlined text-[14px]">
                                 {btConnected ? 'bluetooth_connected' : 'bluetooth'}
                             </span>
                             {btConnected ? 'Siap' : 'Offline'}
                         </button>
 
                         {totalItems > 0 && (
-                            <span className="text-xs bg-[#ff8c00]/10 text-[#ff8c00] px-2.5 py-1 rounded-full font-bold">
-                                {totalItems} item
+                            <span className="text-xs bg-[#ff8c00]/10 text-[#ff8c00] px-3 py-1.5 rounded-full font-bold font-display">
+                                {totalItems}
                             </span>
                         )}
                         {cart.length > 0 && (
                             <button
                                 onClick={clearCart}
-                                className="text-xs text-red-400 hover:text-red-600 font-semibold transition-colors"
+                                className="text-xs text-red-500 hover:text-red-600 font-bold transition-colors bg-white px-3 py-1.5 rounded-full shadow-sm"
                             >
-                                Hapus Semua
+                                Kosongkan
                             </button>
                         )}
                     </div>
                 </div>
 
                 {/* Cart Items */}
-                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3" style={{ scrollbarWidth: 'thin' }}>
+                <div className="flex-1 overflow-y-auto px-6 py-2 pb-6 space-y-0" style={{ scrollbarWidth: 'thin' }}>
                     {cart.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-300">
-                            <span className="material-symbols-outlined text-5xl mb-3">shopping_cart</span>
-                            <p className="text-sm font-semibold text-slate-400">Belum ada item</p>
-                            <p className="text-xs text-slate-400">Tap produk untuk menambahkan</p>
+                        <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                            <span className="material-symbols-outlined text-5xl mb-4 opacity-50">shopping_bag</span>
+                            <p className="text-base font-bold text-slate-500 font-sans">Belum ada pesanan</p>
+                            <p className="text-sm text-slate-400 font-sans mt-1">Tap produk untuk menambahkan ke keranjang</p>
                         </div>
                     ) : (
-                        <>
+                        <div className="space-y-3 mt-2">
                             {cart.map(item => (
-                                <div key={item.id} className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                    {/* Thumbnail */}
-                                    {item.image_url ? (
-                                        <div
-                                            className="w-12 h-12 rounded-lg bg-cover bg-center shadow-sm flex-shrink-0"
-                                            style={{ backgroundImage: `url(${item.image_url})` }}
-                                        />
-                                    ) : (
-                                        <div className="w-12 h-12 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
-                                            <span className="material-symbols-outlined text-slate-400 text-lg">local_drink</span>
-                                        </div>
-                                    )}
-                                    {/* Info */}
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="text-sm font-bold text-slate-900 truncate">{item.name}</h4>
-                                        <p className="text-xs text-slate-500">{formatRupiah(item.price)}</p>
-                                    </div>
-                                    {/* Quantity Controls */}
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => updateQuantity(item.id, -1)}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors"
-                                        >
-                                            <span className="text-lg font-bold leading-none">−</span>
-                                        </button>
-                                        <span className="font-bold text-sm w-5 text-center tabular-nums">{item.quantity}</span>
-                                        <button
-                                            onClick={() => updateQuantity(item.id, 1)}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#ff8c00] text-white font-bold hover:bg-[#e67e00] transition-colors"
-                                        >
-                                            <span className="text-lg leading-none">+</span>
-                                        </button>
-                                    </div>
-                                    {/* Subtotal + Delete */}
-                                    <div className="text-right ml-1 min-w-[65px]">
-                                        <p className="text-sm font-bold text-slate-900 tabular-nums">{formatRupiah(item.price * item.quantity)}</p>
-                                        <button
-                                            onClick={() => removeFromCart(item.id)}
-                                            className="text-slate-400 hover:text-red-500 transition-colors"
-                                        >
-                                            <span className="material-symbols-outlined text-lg">delete</span>
-                                        </button>
-                                    </div>
-                                </div>
+                                <SwipeableCartItem 
+                                    key={item.id} 
+                                    item={item} 
+                                    updateQuantity={updateQuantity} 
+                                    removeFromCart={removeFromCart} 
+                                    formatRupiah={formatRupiah}
+                                />
                             ))}
 
                             {/* Customer Name */}
-                            <div className="mt-3">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Nama Pelanggan</label>
+                            <div className="mt-6">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block px-2">Nama Pelanggan</label>
                                 <input
                                     type="text"
                                     placeholder="Opsional (Walk-in Customer)"
                                     value={customerName}
                                     onChange={e => setCustomerName(e.target.value)}
-                                    className="w-full bg-slate-50 border-none rounded-xl text-sm p-3 focus:ring-1 focus:ring-[#ff8c00]/50 outline-none"
+                                    className="w-full bg-white border-none rounded-2xl text-sm p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] focus:ring-2 focus:ring-[#904d00]/20 outline-none font-sans font-medium"
                                 />
                             </div>
 
                             {/* Order Note */}
-                            <div className="mt-1">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Catatan</label>
+                            <div className="mt-3">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block px-2">Catatan Pesanan</label>
                                 <textarea
                                     value={orderNote}
                                     onChange={e => setOrderNote(e.target.value)}
-                                    className="w-full bg-slate-50 border-none rounded-xl text-sm p-3 focus:ring-1 focus:ring-[#ff8c00]/50 h-20 resize-none outline-none"
+                                    className="w-full bg-white border-none rounded-2xl text-sm p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] focus:ring-2 focus:ring-[#ff8c00]/30 h-24 resize-none outline-none font-sans font-medium"
                                     placeholder="Tambahkan catatan (contoh: Tanpa gula, sedikit es...)"
                                 />
                             </div>
-                        </>
+                        </div>
                     )}
                 </div>
 
                 {/* Pricing Summary & Payment */}
-                <div className="bg-slate-50 p-6 border-t border-slate-200 space-y-4">
+                <div className="bg-white p-6 rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.04)] space-y-5 relative z-30">
                     {/* Price Breakdown */}
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-sm text-slate-600">
+                    <div className="space-y-3">
+                        <div className="flex justify-between text-sm text-slate-500 font-sans font-bold">
                             <span>Subtotal</span>
-                            <span className="tabular-nums">{formatRupiah(subtotal)}</span>
+                            <span className="tabular-nums font-display">{formatRupiah(subtotal)}</span>
                         </div>
-                        <div className="flex justify-between text-xl font-black text-slate-900 pt-2 border-t border-slate-200">
-                            <span>Total</span>
-                            <span className="text-[#ff8c00] tabular-nums">{formatRupiah(totalAmount)}</span>
+                        <div className="flex justify-between text-3xl font-black text-slate-900 pt-3 border-t border-slate-100">
+                            <span className="text-base text-slate-600 font-bold self-end mb-1">Total</span>
+                            <span className="text-[#ff8c00] tabular-nums font-display tracking-tight">{formatRupiah(totalAmount)}</span>
                         </div>
                     </div>
 
                     {/* Payment Methods */}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                         {[
                             { value: 'cash', label: 'Tunai', icon: 'payments' },
                             { value: 'qris', label: 'QRIS', icon: 'qr_code_2' },
@@ -488,13 +565,13 @@ export default function POSPage() {
                             <button
                                 key={method.value}
                                 onClick={() => handlePaymentMethodChange(method.value)}
-                                className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border-2 font-bold transition-all ${paymentMethod === method.value
-                                    ? 'border-[#ff8c00] bg-[#ff8c00]/5 text-[#ff8c00]'
-                                    : 'border-slate-200 text-slate-500 hover:border-[#ff8c00]/40'
+                                className={`flex flex-col items-center justify-center gap-1.5 p-4 rounded-2xl border-[3px] font-bold transition-all ${paymentMethod === method.value
+                                    ? 'border-[#ff8c00] bg-[#ff8c00]/5 text-[#ff8c00] shadow-[0_4px_12px_rgba(255,140,0,0.15)]'
+                                    : 'border-slate-100 text-slate-500 hover:border-slate-200 bg-slate-50 hover:bg-slate-100'
                                     }`}
                             >
-                                <span className="material-symbols-outlined">{method.icon}</span>
-                                <span className="text-[10px] uppercase">{method.label}</span>
+                                <span className="material-symbols-outlined text-2xl">{method.icon}</span>
+                                <span className="text-[11px] uppercase tracking-widest">{method.label}</span>
                             </button>
                         ))}
                     </div>
@@ -574,11 +651,11 @@ export default function POSPage() {
                     <button
                         onClick={handlePayment}
                         disabled={isPayButtonDisabled()}
-                        className={`w-full py-5 rounded-xl text-lg font-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 ${isPayButtonDisabled()
-                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        className={`w-full min-h-[64px] rounded-full text-[17px] font-black transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-3 font-display ${isPayButtonDisabled()
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                             : paymentMethod === 'qris' && isQrisGenerated
-                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-600/30'
-                                : 'bg-[#ff8c00] hover:bg-[#e67e00] text-white shadow-xl shadow-[#ff8c00]/30'
+                                ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_8px_30px_rgba(16,185,129,0.3)] hover:shadow-[0_12px_40px_rgba(16,185,129,0.4)] hover:-translate-y-0.5'
+                                : 'bg-[#ff8c00] hover:bg-[#e67e00] text-white shadow-[0_12px_40px_rgba(255,140,0,0.25)] hover:shadow-[0_16px_50px_rgba(255,140,0,0.35)] hover:-translate-y-0.5'
                             }`}
                     >
                         {isProcessing ? (
@@ -588,8 +665,8 @@ export default function POSPage() {
                             </>
                         ) : (
                             <>
-                                <span className="material-symbols-outlined">
-                                    {paymentMethod === 'qris' && isQrisGenerated ? 'verified' : 'check_circle'}
+                                <span className="material-symbols-outlined text-[20px]">
+                                    {paymentMethod === 'qris' && isQrisGenerated ? 'verified' : 'arrow_forward'}
                                 </span>
                                 {getPayButtonLabel()}
                             </>
