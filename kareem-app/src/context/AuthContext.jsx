@@ -56,6 +56,13 @@ export function AuthProvider({ children }) {
             setIsAdmin(false)
             return
         }
+
+        // Hardcoded fallback for the known admin email
+        if (user.email === 'admin@kareeemjuice.com') {
+            setIsAdmin(true)
+            return
+        }
+
         try {
             const { data, error } = await supabase
                 .from('user_roles')
