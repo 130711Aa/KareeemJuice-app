@@ -58,7 +58,7 @@ export function StoreStatusProvider({ children }) {
             const { error } = await supabase
                 .from('store_settings')
                 .update({ is_open: newStatus, updated_at: new Date().toISOString() })
-                .neq('is_open', null)
+                .not('id', 'is', null)
 
             if (error) throw error
         } catch (err) {
