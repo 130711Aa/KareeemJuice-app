@@ -6,8 +6,15 @@ const ProductsContext = createContext()
 
 export function ProductsProvider({ children }) {
     // Initialize with local storage or defaults to avoid white screen/empty state
-    // Initialize with empty state instead of hardcoded data
-    const [products, setProducts] = useState([])
+    // Initialize dari localStorage jika ada (fallback cepat)
+    const cached = (() => {
+        try {
+            const raw = localStorage.getItem('kareeem_products')
+            if (raw) return JSON.parse(raw)
+        } catch { }
+        return []
+    })()
+    const [products, setProducts] = useState(cached)
     const [loading, setLoading] = useState(true)
 
     // Retry protection
@@ -23,7 +30,7 @@ export function ProductsProvider({ children }) {
         setLoading(true)
         try {
             const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 10000)
+            const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s timeout
 
             const { data, error } = await supabase
                 .from('products')
@@ -38,9 +45,15 @@ export function ProductsProvider({ children }) {
             if (data) {
                 setProducts(data)
                 try {
-                    localStorage.setItem('kareeem_products', JSON.stringify(data))
+                    // Hanya cache produk yang image_url-nya bukan base64 (hemat storage)
+                    const cacheable = data.map(p => ({
+                        ...p,
+                        image_url: p.image_url?.startsWith('data:') ? '' : (p.image_url || '')
+                    }))
+                    localStorage.setItem('kareeem_products', JSON.stringify(cacheable))
                 } catch (e) {
                     // Quota exceeded — not critical, DB is source of truth
+                    try { localStorage.removeItem('kareeem_products') } catch { }
                 }
             }
         } catch (err) {
@@ -48,7 +61,8 @@ export function ProductsProvider({ children }) {
             // Activate cooldown for 10 seconds
             productsCooldownRef.current = true
             setTimeout(() => { productsCooldownRef.current = false }, 10000)
-            // We already have fallback data in state, so just log error
+            // Fallback ke cached localStorage agar kasir tetap bisa jalan
+            // (products state sudah diisi dari localStorage saat init)
         } finally {
             setLoading(false)
         }
