@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOrders } from '../context/OrdersContext'
 import { useCategories } from '../context/CategoriesContext'
 import { useProducts } from '../context/ProductsContext'
 import { useStoreStatus } from '../context/StoreStatusContext'
 import { formatRupiah } from '../lib/utils'
+import toast from 'react-hot-toast'
 
 export default function AdminDashboard() {
     const { orders } = useOrders()
@@ -13,6 +14,49 @@ export default function AdminDashboard() {
     const { isStoreOpen, toggleStore } = useStoreStatus()
     const navigate = useNavigate()
 
+    // Ringtone states
+    const [ringtoneName, setRingtoneName] = useState(localStorage.getItem('kareeem_custom_ringtone_name') || '')
+    const fileInputRef = useRef(null)
+
+    const handleRingtoneUpload = (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        
+        if (!file.type.startsWith('audio/') && !file.type.startsWith('video/')) {
+            toast.error('File harus berupa format audio atau video (mp3/mp4)')
+            return
+        }
+        if (file.size > 2 * 1024 * 1024) { // 2MB max
+            toast.error('Ukuran file maksimal 2MB untuk ringtone')
+            return
+        }
+
+        const reader = new FileReader()
+        reader.onload = (ev) => {
+            try {
+                localStorage.setItem('kareeem_custom_ringtone', ev.target.result)
+                localStorage.setItem('kareeem_custom_ringtone_name', file.name)
+                setRingtoneName(file.name)
+                toast.success('Ringtone custom berhasil disimpan!')
+                
+                // Test play
+                const audio = new Audio(ev.target.result)
+                audio.play().catch(() => {})
+            } catch (err) {
+                toast.error('Gagal menyimpan ringtone (mungkin ukuran file terlalu besar untuk memory)')
+            }
+        }
+        reader.readAsDataURL(file)
+        
+        if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+
+    const handleResetRingtone = () => {
+        localStorage.removeItem('kareeem_custom_ringtone')
+        localStorage.removeItem('kareeem_custom_ringtone_name')
+        setRingtoneName('')
+        toast.success('Ringtone dikembalikan ke suara default')
+    }
 
     // Real stats from orders
     const stats = useMemo(() => {
@@ -305,6 +349,43 @@ export default function AdminDashboard() {
                                 </div>
                                 <div className="flex-1">
                                     <p className="text-sm font-bold">{categories.length} Kategori · {products.length} Produk</p>
+                                </div>
+                            </div>
+
+                            {/* Ringtone Setting */}
+                            <div className="pt-4 border-t border-orange-50">
+                                <p className="text-sm font-bold mb-3">Pengaturan Nada Dering Notifikasi</p>
+                                <div className="p-3 bg-[#faf8f5] rounded-xl border border-[#ff8c00]/10 mb-3">
+                                    <p className="text-xs text-neutral-500 mb-1">Nada Dering Saat Ini</p>
+                                    <p className="text-sm font-semibold text-neutral-800 truncate">
+                                        {ringtoneName ? ringtoneName : 'Suara Default (Panjang)'}
+                                    </p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="file" 
+                                        accept="audio/*,video/mp4" 
+                                        className="hidden" 
+                                        ref={fileInputRef}
+                                        onChange={handleRingtoneUpload}
+                                    />
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="flex-1 flex items-center justify-center gap-2 bg-[#ff8c00]/10 text-[#ff8c00] font-bold py-2.5 px-3 rounded-xl hover:bg-[#ff8c00]/20 transition-colors text-xs"
+                                    >
+                                        <span className="material-symbols-outlined text-base">upload_file</span>
+                                        Ganti Nada
+                                    </button>
+                                    
+                                    {ringtoneName && (
+                                        <button
+                                            onClick={handleResetRingtone}
+                                            className="flex items-center justify-center gap-2 bg-red-50 text-red-500 font-bold py-2.5 px-3 rounded-xl hover:bg-red-100 transition-colors text-xs"
+                                            title="Hapus Nada Custom"
+                                        >
+                                            <span className="material-symbols-outlined text-base">delete</span>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 

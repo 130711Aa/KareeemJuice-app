@@ -30,6 +30,8 @@ export default function ProfilePage() {
         }
     }
 
+
+
     const metadata = user?.user_metadata || {}
 
     return (
@@ -104,6 +106,8 @@ export default function ProfilePage() {
                         </div>
                     </div>
                 </div>
+
+
 
                 {/* Actions */}
                 <div className="space-y-3">
