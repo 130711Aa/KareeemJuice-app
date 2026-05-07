@@ -67,7 +67,6 @@ export function OrdersProvider({ children }) {
                 .select('id,order_number,customer_name,customer_phone,customer_address,notes,total_amount,payment_method,items,status,created_at,user_id')
                 .gte('created_at', today.toISOString())
                 .order('created_at', { ascending: false })
-                .limit(50)
                 .abortSignal(controller.signal)
 
             clearTimeout(timeoutId)
