@@ -1,9 +1,15 @@
 export default function CustomerTable({ data }) {
     if (!data || data.length === 0) {
-        return <div className="p-4 text-center text-stone-400">Belum ada data pelanggan.</div>
+        return (
+            <div className="py-10 flex flex-col items-center justify-center text-stone-400 gap-2">
+                <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="opacity-30">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="text-sm">Belum ada data pelanggan.</span>
+            </div>
+        )
     }
 
-    // Limit to top 10
     const topCustomers = data.slice(0, 10)
 
     return (
@@ -21,21 +27,21 @@ export default function CustomerTable({ data }) {
                     {topCustomers.map((customer, index) => (
                         <tr key={index} className="hover:bg-stone-50/50 transition-colors">
                             <td className="px-4 py-3">
-                                <p className="font-medium text-stone-800">{customer.customer_name || 'Guest'}</p>
-                                <p className="text-xs text-stone-400">{customer.customer_phone}</p>
+                                <p className="font-medium text-stone-800 truncate max-w-[100px]">{customer.customer_name || 'Guest'}</p>
+                                <p className="text-xs text-stone-400">{customer.customer_phone !== '-' ? customer.customer_phone : ''}</p>
                             </td>
                             <td className="px-4 py-3 text-center">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${customer.customer_type === 'Returning'
-                                        ? 'bg-purple-100 text-purple-700'
-                                        : 'bg-blue-100 text-blue-700'
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${customer.customer_type === 'Returning'
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'bg-blue-100 text-blue-700'
                                     }`}>
-                                    {customer.customer_type}
+                                    {customer.customer_type === 'Returning' ? 'Langganan' : 'Baru'}
                                 </span>
                             </td>
-                            <td className="px-4 py-3 text-right text-stone-600">
-                                {customer.total_transactions}
+                            <td className="px-4 py-3 text-right text-stone-600 font-mono">
+                                {customer.total_transactions}x
                             </td>
-                            <td className="px-4 py-3 text-right font-medium text-stone-800">
+                            <td className="px-4 py-3 text-right font-medium text-stone-800 font-mono whitespace-nowrap">
                                 Rp {customer.total_spent.toLocaleString('id-ID')}
                             </td>
                         </tr>
