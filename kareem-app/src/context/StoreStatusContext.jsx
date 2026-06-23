@@ -5,6 +5,7 @@ const StoreStatusContext = createContext()
 
 export function StoreStatusProvider({ children }) {
     const [isStoreOpen, setIsStoreOpen] = useState(true)
+    const [webOrderingEnabled, setWebOrderingEnabled] = useState(true)
     const [loading, setLoading] = useState(true)
 
     // Fetch initial store status
@@ -13,16 +14,20 @@ export function StoreStatusProvider({ children }) {
             try {
                 const { data, error } = await supabase
                     .from('store_settings')
-                    .select('is_open')
+                    .select('is_open, web_ordering_enabled')
                     .limit(1)
                     .maybeSingle()
 
                 if (error) throw error
-                if (data) setIsStoreOpen(data.is_open)
+                if (data) {
+                    setIsStoreOpen(data.is_open)
+                    // Fallback ke true jika kolom belum ada di DB
+                    setWebOrderingEnabled(data.web_ordering_enabled ?? true)
+                }
             } catch (err) {
                 console.warn('Could not fetch store status:', err)
-                // Default to open if table doesn't exist yet
                 setIsStoreOpen(true)
+                setWebOrderingEnabled(true)
             } finally {
                 setLoading(false)
             }
@@ -40,6 +45,9 @@ export function StoreStatusProvider({ children }) {
                     if (payload.new && typeof payload.new.is_open === 'boolean') {
                         setIsStoreOpen(payload.new.is_open)
                     }
+                    if (payload.new && typeof payload.new.web_ordering_enabled === 'boolean') {
+                        setWebOrderingEnabled(payload.new.web_ordering_enabled)
+                    }
                 }
             )
             .subscribe()
@@ -51,7 +59,6 @@ export function StoreStatusProvider({ children }) {
 
     const toggleStore = useCallback(async () => {
         const newStatus = !isStoreOpen
-        // Optimistic update
         setIsStoreOpen(newStatus)
 
         try {
@@ -63,13 +70,29 @@ export function StoreStatusProvider({ children }) {
             if (error) throw error
         } catch (err) {
             console.error('Failed to toggle store status:', err)
-            // Revert on error
             setIsStoreOpen(!newStatus)
         }
     }, [isStoreOpen])
 
+    const toggleWebOrdering = useCallback(async () => {
+        const newStatus = !webOrderingEnabled
+        setWebOrderingEnabled(newStatus)
+
+        try {
+            const { error } = await supabase
+                .from('store_settings')
+                .update({ web_ordering_enabled: newStatus, updated_at: new Date().toISOString() })
+                .not('id', 'is', null)
+
+            if (error) throw error
+        } catch (err) {
+            console.error('Failed to toggle web ordering:', err)
+            setWebOrderingEnabled(!newStatus)
+        }
+    }, [webOrderingEnabled])
+
     return (
-        <StoreStatusContext.Provider value={{ isStoreOpen, toggleStore, loading }}>
+        <StoreStatusContext.Provider value={{ isStoreOpen, toggleStore, webOrderingEnabled, toggleWebOrdering, loading }}>
             {children}
         </StoreStatusContext.Provider>
     )

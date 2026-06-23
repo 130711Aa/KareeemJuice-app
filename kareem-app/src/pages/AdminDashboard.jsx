@@ -11,7 +11,7 @@ export default function AdminDashboard() {
     const { orders } = useOrders()
     const { categories } = useCategories()
     const { products } = useProducts()
-    const { isStoreOpen, toggleStore } = useStoreStatus()
+    const { isStoreOpen, toggleStore, webOrderingEnabled, toggleWebOrdering } = useStoreStatus()
     const navigate = useNavigate()
 
     // Ringtone states
@@ -163,8 +163,27 @@ export default function AdminDashboard() {
                         <h2 className="text-2xl font-bold tracking-tight">Ikhtisar Dashboard</h2>
                         <p className="text-orange-800/60 font-medium">Selamat datang, Kareeem! Berikut data terkini.</p>
                     </div>
-                    <div className="flex items-center gap-4 flex-wrap">
-                        {/* Store Toggle */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                        {/* Web Ordering Toggle */}
+                        <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all ${webOrderingEnabled
+                            ? 'bg-blue-50 border-blue-200'
+                            : 'bg-neutral-50 border-neutral-200'
+                            }`}>
+                            <span className="material-symbols-outlined text-base text-neutral-500">language</span>
+                            <span className={`text-sm font-bold ${webOrderingEnabled ? 'text-blue-700' : 'text-neutral-500'}`}>
+                                {webOrderingEnabled ? 'Pesan Web Aktif' : 'Pesan Web Mati'}
+                            </span>
+                            <label className="toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    checked={webOrderingEnabled}
+                                    onChange={toggleWebOrdering}
+                                />
+                                <span className="toggle-slider" />
+                            </label>
+                        </div>
+
+                        {/* Store Open/Close Toggle */}
                         <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all ${isStoreOpen
                             ? 'bg-green-50 border-green-200'
                             : 'bg-red-50 border-red-200'

@@ -16,7 +16,7 @@ export default function CheckoutModal({ onClose, onSuccess }) {
     const { items, totalPrice, clearCart } = useCart()
     const { addOrder } = useOrders()
     const { user } = useAuth()
-    const { isStoreOpen } = useStoreStatus()
+    const { isStoreOpen, webOrderingEnabled } = useStoreStatus()
     const [form, setForm] = useState({
         name: user?.user_metadata?.name || '',
         phone: user?.user_metadata?.phone || '',
@@ -91,6 +91,11 @@ export default function CheckoutModal({ onClose, onSuccess }) {
 
         if (!isStoreOpen) {
             toast.error('Maaf, toko sedang tutup!')
+            return
+        }
+
+        if (!webOrderingEnabled) {
+            toast.error('Pemesanan lewat web sedang dinonaktifkan. Silakan pesan langsung di kasir.')
             return
         }
 
@@ -349,10 +354,18 @@ export default function CheckoutModal({ onClose, onSuccess }) {
                         </div>
                     )}
 
+                    {/* Web ordering disabled warning */}
+                    {!webOrderingEnabled && (
+                        <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700 font-semibold">
+                            <span className="material-symbols-outlined text-base">language</span>
+                            Pemesanan online sedang dinonaktifkan
+                        </div>
+                    )}
+
                     <button
                         type="submit"
-                        disabled={loading || !isStoreOpen}
-                        className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98]"
+                        disabled={loading || !isStoreOpen || !webOrderingEnabled}
+                        className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
                     >
                         {loading ? (
                             <>

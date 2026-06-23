@@ -2,6 +2,7 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { useCart } from '../context/CartContext'
+import { useStoreStatus } from '../context/StoreStatusContext'
 import { formatRupiah } from '../lib/utils'
 import { useState } from 'react'
 import CheckoutModal from './CheckoutModal'
@@ -9,10 +10,19 @@ import CheckoutModal from './CheckoutModal'
 export default function CartDrawer() {
     const { items, isOpen, setIsOpen, updateQuantity, removeItem, totalPrice, clearCart } = useCart()
     const { user } = useAuth()
+    const { isStoreOpen, webOrderingEnabled } = useStoreStatus()
     const navigate = useNavigate()
     const [showCheckout, setShowCheckout] = useState(false)
 
     const handleCheckout = () => {
+        if (!isStoreOpen) {
+            toast.error('Toko sedang tutup!')
+            return
+        }
+        if (!webOrderingEnabled) {
+            toast.error('Pemesanan lewat web sedang dinonaktifkan. Silakan pesan langsung di kasir.')
+            return
+        }
         if (!user) {
             toast.error('Silakan login terlebih dahulu untuk memesan!')
             setIsOpen(false)
@@ -115,10 +125,17 @@ export default function CartDrawer() {
                         </div>
                         <button
                             onClick={handleCheckout}
-                            className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 flex items-center justify-center gap-2 active:scale-[0.98]"
+                            disabled={!isStoreOpen || !webOrderingEnabled}
+                            className={`w-full py-3.5 rounded-xl font-bold text-base transition-all shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] ${
+                                (!isStoreOpen || !webOrderingEnabled)
+                                    ? 'bg-neutral-200 text-neutral-400 shadow-neutral-100 cursor-not-allowed'
+                                    : 'bg-[#ff8c00] text-white shadow-[#ff8c00]/20 hover:bg-[#e67e00]'
+                            }`}
                         >
-                            <span className="material-symbols-outlined">shopping_bag</span>
-                            Checkout Sekarang
+                            <span className="material-symbols-outlined">
+                                {(!isStoreOpen || !webOrderingEnabled) ? 'block' : 'shopping_bag'}
+                            </span>
+                            {!isStoreOpen ? 'Toko Tutup' : !webOrderingEnabled ? 'Pesan Web Mati' : 'Checkout Sekarang'}
                         </button>
                         <button
                             onClick={clearCart}
